@@ -1,0 +1,121 @@
+<div style="display:flex;height:100vh;background:#f8fafc;">
+
+  <!-- Sidebar -->
+  <div style="width:260px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0;">
+    <div style="padding:20px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
+      <div style="font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
+        ChatApp
+      </div>
+    </div>
+    <div style="padding:16px 12px;flex:1;">
+      <div style="font-size:11px;font-weight:600;color:#475569;letter-spacing:.08em;text-transform:uppercase;padding:0 4px;margin-bottom:8px;">Current room</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;background:rgba(99,102,241,0.2);">
+        <span style="font-size:15px;color:#818cf8;font-weight:500;">#</span>
+        <span style="font-size:14px;color:#fff;font-weight:500;">{{ roomId }}</span>
+      </div>
+    </div>
+    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
+        {{ username.charAt(0).toUpperCase() }}
+      </div>
+      <span style="font-size:13px;color:#cbd5e1;">{{ username }}</span>
+      <button (click)="goBack()"
+        style="margin-left:auto;background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
+        ← Back
+      </button>
+    </div>
+  </div>
+
+  <!-- Main chat area -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+
+    <!-- Header -->
+    <div style="padding:14px 20px;background:#fff;border-bottom:0.5px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#0f172a;"># {{ roomId }}</div>
+        <div style="font-size:12px;color:#94a3b8;">Real-time chat</div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:#f8fafc;">
+
+      <!-- Loading state -->
+      @if (loading) {
+        <div style="display:flex;align-items:center;justify-content:center;flex:1;color:#94a3b8;">
+          <div style="text-align:center;">
+            <div style="font-size:24px;margin-bottom:8px;">⏳</div>
+            <div style="font-size:13px;">Loading messages...</div>
+          </div>
+        </div>
+      }
+
+      <!-- Empty state -->
+      @if (!loading && messages.length === 0) {
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;text-align:center;padding:3rem;">
+          <div style="font-size:40px;margin-bottom:1rem;">💬</div>
+          <div style="font-size:16px;font-weight:600;color:#64748b;margin-bottom:6px;">No messages yet</div>
+          <div style="font-size:13px;">Be the first to say hello!</div>
+        </div>
+      }
+
+      <!-- Message list -->
+      @for (msg of messages; track $index) {
+        <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
+             style="display:flex;gap:10px;align-items:flex-start;">
+
+          <!-- Avatar -->
+          <div [style.background]="getAvatarColor(msg.senderUsername)"
+               style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;margin-top:2px;">
+            {{ msg.senderUsername.charAt(0).toUpperCase() }}
+          </div>
+
+          <!-- Bubble -->
+          <div [style.align-items]="msg.senderUsername === username ? 'flex-end' : 'flex-start'"
+               style="display:flex;flex-direction:column;max-width:65%;">
+
+            <!-- Name + time -->
+            <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
+                 style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+              <span [style.color]="getAvatarColor(msg.senderUsername)"
+                    style="font-size:12px;font-weight:700;">{{ msg.senderUsername }}</span>
+              <span style="font-size:11px;color:#94a3b8;">{{ formatTime(msg.timestamp) }}</span>
+            </div>
+
+            <!-- Message bubble -->
+            <div [style.background]="msg.senderUsername === username ? '#6366f1' : '#ffffff'"
+                 [style.color]="msg.senderUsername === username ? '#ffffff' : '#334155'"
+                 [style.border-radius]="msg.senderUsername === username ? '16px 4px 16px 16px' : '4px 16px 16px 16px'"
+                 [style.box-shadow]="msg.senderUsername === username ? 'none' : '0 1px 3px rgba(0,0,0,0.06)'"
+                 style="padding:10px 14px;font-size:14px;line-height:1.55;word-break:break-word;border:1px solid transparent;"
+                 [style.border-color]="msg.senderUsername === username ? 'transparent' : '#e8edf2'">
+              {{ msg.content }}
+            </div>
+          </div>
+        </div>
+      }
+
+      <div #messagesEnd style="height:1px;"></div>
+    </div>
+
+    <!-- Input bar -->
+    <div style="padding:14px 16px;background:#fff;border-top:1px solid #f1f5f9;">
+      <div style="display:flex;align-items:center;gap:10px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:14px;padding:6px 6px 6px 16px;">
+        <input [(ngModel)]="inputText"
+               (keydown.enter)="sendMessage()"
+               [placeholder]="'Message #' + roomId"
+               style="flex:1;border:none;background:transparent;font-size:14px;color:#0f172a;outline:none;padding:6px 0;" />
+        <button (click)="sendMessage()"
+          [disabled]="!inputText.trim()"
+          style="width:36px;height:36px;border-radius:10px;background:#6366f1;border:none;color:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;opacity:1;"
+          [style.opacity]="inputText.trim() ? '1' : '0.4'"
+          onmouseover="this.style.background='#4f46e5'"
+          onmouseout="this.style.background='#6366f1'">
+          ➤
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
