@@ -1,68 +1,43 @@
 import { Injectable } from '@angular/core';
-import { Subject } from 'rxjs';
-import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { Subject } from 'rxjs';
 import { ChatMessage } from '../models/chat-message.model';
 import { AuthService } from './auth';
-
+ 
 @Injectable({ providedIn: 'root' })
 export class ChatService {
-
-  messages$ = new Subject<ChatMessage>();
-
-  private client!: Client;
-  private stompSub!: StompSubscription;
-
+ 
+  private stompClient!: Client;
+  private messageSubject = new Subject<ChatMessage>();
+  public messages$ = this.messageSubject.asObservable();
+ 
   constructor(private authService: AuthService) {}
-
+ 
   connect(roomId: string): void {
-    if (this.client?.active) {
-      this.disconnect();
-    }
-
-    this.client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
-      connectHeaders: {
-        Authorization: `Bearer ${this.authService.getToken() ?? ''}`
-      },
-      reconnectDelay: 3000,
+    const token = this.authService.getToken();
+    this.stompClient = new Client({
+      webSocketFactory: () => new SockJS('https://chat-backend-vdje.onrender.com/ws') as WebSocket,
+      connectHeaders: { Authorization: `Bearer ${token}` },
       onConnect: () => {
-        // ✅ Fixed: matches @SendTo("/topic/room/{roomId}") in backend
-        this.stompSub = this.client.subscribe(
-          `/topic/room/${roomId}`,
-          (frame: IMessage) => {
-            try {
-              const msg: ChatMessage = JSON.parse(frame.body);
-              this.messages$.next(msg);
-            } catch (e) {
-              console.error('Parse error', e);
-            }
-          }
-        );
+        console.log('WebSocket connected!');
+        this.stompClient.subscribe(`/topic/room/${roomId}`, (msg: IMessage) => {
+          this.messageSubject.next(JSON.parse(msg.body));
+        });
       },
-      onStompError: (frame) => console.error('STOMP error', frame),
-      onDisconnect: () => console.log('STOMP disconnected')
+      onStompError: (frame) => console.error('WebSocket error:', frame)
     });
-
-    this.client.activate();
+    this.stompClient.activate();
   }
-
+ 
   sendMessage(roomId: string, message: ChatMessage): void {
-    if (!this.client?.connected) {
-      console.warn('WebSocket not connected yet');
-      return;
+    if (this.stompClient?.connected) {
+      this.stompClient.publish({
+        destination: `/app/chat/${roomId}/send`,
+        body: JSON.stringify(message)
+      });
     }
-    // ✅ Fixed: matches @MessageMapping("/chat/{roomId}/send") in backend
-    this.client.publish({
-      destination: `/app/chat/${roomId}/send`,
-      body: JSON.stringify(message)
-    });
   }
-
-  disconnect(): void {
-    try {
-      this.stompSub?.unsubscribe();
-      this.client?.deactivate();
-    } catch (e) {}
-  }
+ 
+  disconnect(): void { this.stompClient?.deactivate(); }
 }
