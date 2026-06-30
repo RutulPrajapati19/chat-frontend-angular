@@ -15,6 +15,9 @@ export class ChatService {
   private connectionStatus = new BehaviorSubject<boolean>(false);
   public connected$ = this.connectionStatus.asObservable();
  
+  private errorSubject = new Subject<string>();
+  public errors$ = this.errorSubject.asObservable();
+ 
   private pendingMessages: { roomId: string; message: ChatMessage }[] = [];
  
   constructor(private authService: AuthService) {}
@@ -28,11 +31,14 @@ export class ChatService {
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 3000,
       onConnect: () => {
-        console.log('WebSocket connected!');
         this.connectionStatus.next(true);
  
         this.stompClient.subscribe(`/topic/room/${roomId}`, (msg: IMessage) => {
           this.messageSubject.next(JSON.parse(msg.body));
+        });
+ 
+        this.stompClient.subscribe(`/user/queue/errors`, (msg: IMessage) => {
+          this.errorSubject.next(msg.body);
         });
  
         while (this.pendingMessages.length > 0) {
@@ -44,6 +50,7 @@ export class ChatService {
       onStompError: (frame) => {
         console.error('WebSocket error:', frame);
         this.connectionStatus.next(false);
+        this.errorSubject.next(frame.headers['message'] || 'Connection error');
       }
     });
  
