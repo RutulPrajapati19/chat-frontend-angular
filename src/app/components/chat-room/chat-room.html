@@ -2,8 +2,11 @@
   <div style="width:260px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0;">
     <div style="padding:20px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
       <div style="font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
-        <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
+        <div [style.background]="isConnected ? '#22c55e' : '#f59e0b'" style="width:8px;height:8px;border-radius:50%;"></div>
         ChatApp
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:4px;">
+        {{ isConnected ? 'Connected' : 'Connecting...' }}
       </div>
     </div>
     <div style="padding:16px 12px;flex:1;">
@@ -39,7 +42,7 @@
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;text-align:center;padding:3rem;">
           <div style="font-size:40px;margin-bottom:1rem;">💬</div>
           <div style="font-size:16px;font-weight:600;color:#64748b;margin-bottom:6px;">No messages yet</div>
-          <div style="font-size:13px;">Be the first to say hello!</div>
+          <div style="font-size:13px;">Be the first to say hello.</div>
         </div>
       }
  
@@ -73,6 +76,9 @@
     </div>
  
     <div style="padding:12px 16px;background:#fff;border-top:0.5px solid #f1f5f9;">
+      @if (!isConnected) {
+        <div style="font-size:12px;color:#f59e0b;margin-bottom:6px;">Connecting to chat server... your message will send once connected.</div>
+      }
       <div style="display:flex;align-items:center;gap:10px;background:#f8fafc;border:0.5px solid #e2e8f0;border-radius:14px;padding:8px 14px;">
         <input [(ngModel)]="inputText"
                (keydown.enter)="sendMessage()"

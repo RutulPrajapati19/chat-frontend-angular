@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { Subject } from 'rxjs';
+import { Subject, BehaviorSubject } from 'rxjs';
 import { ChatMessage } from '../models/chat-message.model';
 import { AuthService } from './auth';
  
@@ -12,32 +12,62 @@ export class ChatService {
   private messageSubject = new Subject<ChatMessage>();
   public messages$ = this.messageSubject.asObservable();
  
+  private connectionStatus = new BehaviorSubject<boolean>(false);
+  public connected$ = this.connectionStatus.asObservable();
+ 
+  private pendingMessages: { roomId: string; message: ChatMessage }[] = [];
+ 
   constructor(private authService: AuthService) {}
  
   connect(roomId: string): void {
     const token = this.authService.getToken();
+    this.connectionStatus.next(false);
+ 
     this.stompClient = new Client({
       webSocketFactory: () => new SockJS('https://chat-backend-vdje.onrender.com/ws') as WebSocket,
       connectHeaders: { Authorization: `Bearer ${token}` },
+      reconnectDelay: 3000,
       onConnect: () => {
         console.log('WebSocket connected!');
+        this.connectionStatus.next(true);
+ 
         this.stompClient.subscribe(`/topic/room/${roomId}`, (msg: IMessage) => {
           this.messageSubject.next(JSON.parse(msg.body));
         });
+ 
+        while (this.pendingMessages.length > 0) {
+          const pending = this.pendingMessages.shift();
+          if (pending) this.publishNow(pending.roomId, pending.message);
+        }
       },
-      onStompError: (frame) => console.error('WebSocket error:', frame)
+      onDisconnect: () => this.connectionStatus.next(false),
+      onStompError: (frame) => {
+        console.error('WebSocket error:', frame);
+        this.connectionStatus.next(false);
+      }
     });
+ 
     this.stompClient.activate();
+  }
+ 
+  private publishNow(roomId: string, message: ChatMessage): void {
+    this.stompClient.publish({
+      destination: `/app/chat/${roomId}/send`,
+      body: JSON.stringify(message)
+    });
   }
  
   sendMessage(roomId: string, message: ChatMessage): void {
     if (this.stompClient?.connected) {
-      this.stompClient.publish({
-        destination: `/app/chat/${roomId}/send`,
-        body: JSON.stringify(message)
-      });
+      this.publishNow(roomId, message);
+    } else {
+      this.pendingMessages.push({ roomId, message });
     }
   }
  
-  disconnect(): void { this.stompClient?.deactivate(); }
+  disconnect(): void {
+    this.pendingMessages = [];
+    this.connectionStatus.next(false);
+    this.stompClient?.deactivate();
+  }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -22,7 +22,9 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages: ChatMessage[] = [];
   inputText = '';
   username = '';
+  isConnected = false;
   private sub!: Subscription;
+  private connSub!: Subscription;
  
   private backendUrl = 'https://chat-backend-vdje.onrender.com';
  
@@ -31,7 +33,8 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     private router: Router,
     private http: HttpClient,
     private chatService: ChatService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {}
  
   ngOnInit(): void {
@@ -40,10 +43,22 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
  
     const headers = new HttpHeaders({ Authorization: `Bearer ${this.authService.getToken()}` });
     this.http.get<ChatMessage[]>(`${this.backendUrl}/api/messages/${this.roomId}`, { headers })
-      .subscribe({ next: msgs => this.messages = msgs, error: () => {} });
+      .subscribe({
+        next: msgs => { this.messages = msgs; this.cdr.detectChanges(); },
+        error: () => {}
+      });
  
     this.chatService.connect(this.roomId);
-    this.sub = this.chatService.messages$.subscribe(msg => this.messages.push(msg));
+ 
+    this.connSub = this.chatService.connected$.subscribe(status => {
+      this.isConnected = status;
+      this.cdr.detectChanges();
+    });
+ 
+    this.sub = this.chatService.messages$.subscribe(msg => {
+      this.messages.push(msg);
+      this.cdr.detectChanges();
+    });
   }
  
   ngAfterViewChecked(): void {
@@ -52,13 +67,15 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
  
   sendMessage(): void {
     if (!this.inputText.trim()) return;
+    const content = this.inputText;
+    this.inputText = '';
+ 
     this.chatService.sendMessage(this.roomId, {
       roomId: this.roomId,
       senderUsername: this.username,
-      content: this.inputText,
+      content: content,
       type: 'CHAT'
     });
-    this.inputText = '';
   }
  
   getAvatarColor(username: string): string {
@@ -80,6 +97,7 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
  
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.connSub?.unsubscribe();
     this.chatService.disconnect();
   }
 }

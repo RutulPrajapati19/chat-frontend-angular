@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,10 +15,17 @@ export class RoomListComponent implements OnInit {
   rooms: any[] = [];
   newRoomName = '';
   username = '';
+  loading = true;
+  errorMsg = '';
  
   private backendUrl = 'https://chat-backend-vdje.onrender.com';
  
-  constructor(private http: HttpClient, private authService: AuthService, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
  
   ngOnInit(): void {
     this.username = this.authService.getUsername() || '';
@@ -30,17 +37,49 @@ export class RoomListComponent implements OnInit {
   }
  
   loadRooms(): void {
+    this.loading = true;
+    this.errorMsg = '';
+    this.cdr.detectChanges();
+ 
     this.http.get<any[]>(`${this.backendUrl}/api/rooms`, { headers: this.headers() })
-      .subscribe({ next: rooms => this.rooms = rooms, error: () => this.rooms = [] });
+      .subscribe({
+        next: rooms => {
+          this.rooms = rooms;
+          this.loading = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.rooms = [];
+          this.loading = false;
+          this.errorMsg = 'Could not load rooms. The server may be waking up — try again in a moment.';
+          this.cdr.detectChanges();
+          console.error('Failed to load rooms', err);
+        }
+      });
   }
  
   createRoom(): void {
     if (!this.newRoomName.trim()) return;
-    this.http.post<any>(`${this.backendUrl}/api/rooms`, { name: this.newRoomName }, { headers: this.headers() })
-      .subscribe({ next: room => { this.rooms.unshift(room); this.newRoomName = ''; } });
+    const name = this.newRoomName.trim();
+    this.newRoomName = '';
+ 
+    this.http.post<any>(`${this.backendUrl}/api/rooms`, { name }, { headers: this.headers() })
+      .subscribe({
+        next: room => {
+          this.rooms = [room, ...this.rooms];
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.errorMsg = 'Could not create room. Try again.';
+          this.cdr.detectChanges();
+          console.error('Failed to create room', err);
+        }
+      });
   }
  
   joinRoom(roomId: string): void { this.router.navigate(['/room', roomId]); }
+ 
+  goToProfile(): void { this.router.navigate(['/profile']); }
  
   logout(): void { this.authService.logout(); this.router.navigate(['/login']); }
 }

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { AuthRequest, AuthResponse } from '../models/user.model';
@@ -8,6 +8,7 @@ import { AuthRequest, AuthResponse } from '../models/user.model';
 export class AuthService {
  
   private apiUrl = 'https://chat-backend-vdje.onrender.com/api/auth';
+  private userUrl = 'https://chat-backend-vdje.onrender.com/api/users';
  
   constructor(private http: HttpClient) {}
  
@@ -34,5 +35,17 @@ export class AuthService {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+  }
+ 
+  private headers() {
+    return new HttpHeaders({ Authorization: `Bearer ${this.getToken()}` });
+  }
+ 
+  getMyProfile(): Observable<any> {
+    return this.http.get(`${this.userUrl}/me`, { headers: this.headers() });
+  }
+ 
+  updateProfile(data: { email?: string; currentPassword?: string; newPassword?: string }): Observable<any> {
+    return this.http.put(`${this.userUrl}/me`, data, { headers: this.headers() });
   }
 }
