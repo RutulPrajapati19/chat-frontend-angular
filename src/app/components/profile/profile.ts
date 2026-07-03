@@ -13,14 +13,12 @@ import { AuthService } from '../../services/auth';
 export class ProfileComponent implements OnInit {
   username = '';
   email = '';
-  status = '';
   memberSince = '';
+  loading = true;
  
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
- 
-  loading = true;
   saving = false;
   successMsg = '';
   errorMsg = '';
@@ -28,27 +26,18 @@ export class ProfileComponent implements OnInit {
   constructor(private authService: AuthService, private router: Router) {}
  
   ngOnInit(): void {
-    this.loadProfile();
-  }
- 
-  loadProfile(): void {
-    this.loading = true;
     this.authService.getMyProfile().subscribe({
-      next: (profile) => {
-        this.username = profile.username;
-        this.email = profile.email;
-        this.status = profile.status;
-        this.memberSince = profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '';
+      next: (p) => {
+        this.username = p.username;
+        this.email = p.email;
+        this.memberSince = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '';
         this.loading = false;
       },
-      error: () => {
-        this.errorMsg = 'Could not load your profile.';
-        this.loading = false;
-      }
+      error: () => { this.loading = false; }
     });
   }
  
-  saveChanges(): void {
+  save(): void {
     this.successMsg = '';
     this.errorMsg = '';
  
@@ -56,14 +45,12 @@ export class ProfileComponent implements OnInit {
       this.errorMsg = 'New passwords do not match.';
       return;
     }
- 
     if (this.newPassword && !this.currentPassword) {
-      this.errorMsg = 'Enter your current password to set a new one.';
+      this.errorMsg = 'Enter your current password.';
       return;
     }
  
     this.saving = true;
- 
     const payload: any = { email: this.email };
     if (this.newPassword) {
       payload.currentPassword = this.currentPassword;
@@ -72,7 +59,7 @@ export class ProfileComponent implements OnInit {
  
     this.authService.updateProfile(payload).subscribe({
       next: () => {
-        this.successMsg = 'Profile updated.';
+        this.successMsg = 'Profile updated successfully.';
         this.saving = false;
         this.currentPassword = '';
         this.newPassword = '';
@@ -87,6 +74,8 @@ export class ProfileComponent implements OnInit {
  
   goBack(): void { this.router.navigate(['/rooms']); }
  
-  logout(): void { this.authService.logout(); this.router.navigate(['/login']); }
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
 }
- 

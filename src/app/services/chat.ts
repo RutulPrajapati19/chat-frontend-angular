@@ -1,80 +1,87 @@
 import { Injectable } from '@angular/core';
-import { Client, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { Subject, BehaviorSubject } from 'rxjs';
+import { Client, IMessage, StompSubscription } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { ChatMessage } from '../models/chat-message.model';
 import { AuthService } from './auth';
+import { environment } from '../../environments/environment';
  
 @Injectable({ providedIn: 'root' })
 export class ChatService {
  
-  private stompClient!: Client;
-  private messageSubject = new Subject<ChatMessage>();
-  public messages$ = this.messageSubject.asObservable();
+  messages$ = new Subject<ChatMessage>();
+  connected$ = new BehaviorSubject<boolean>(false);
  
-  private connectionStatus = new BehaviorSubject<boolean>(false);
-  public connected$ = this.connectionStatus.asObservable();
- 
-  private errorSubject = new Subject<string>();
-  public errors$ = this.errorSubject.asObservable();
- 
+  private client!: Client;
+  private stompSub!: StompSubscription;
   private pendingMessages: { roomId: string; message: ChatMessage }[] = [];
  
   constructor(private authService: AuthService) {}
  
   connect(roomId: string): void {
-    const token = this.authService.getToken();
-    this.connectionStatus.next(false);
+    if (this.client?.active) {
+      this.disconnect();
+    }
  
-    this.stompClient = new Client({
-      webSocketFactory: () => new SockJS('https://chat-backend-vdje.onrender.com/ws') as WebSocket,
-      connectHeaders: { Authorization: `Bearer ${token}` },
+    this.client = new Client({
+      webSocketFactory: () => new SockJS(`${environment.wsUrl}/ws`) as WebSocket,
+      connectHeaders: {
+        Authorization: `Bearer ${this.authService.getToken() ?? ''}`
+      },
       reconnectDelay: 3000,
       onConnect: () => {
-        this.connectionStatus.next(true);
+        this.connected$.next(true);
  
-        this.stompClient.subscribe(`/topic/room/${roomId}`, (msg: IMessage) => {
-          this.messageSubject.next(JSON.parse(msg.body));
-        });
+        this.stompSub = this.client.subscribe(
+          `/topic/room/${roomId}`,
+          (frame: IMessage) => {
+            try {
+              const msg: ChatMessage = JSON.parse(frame.body);
+              this.messages$.next(msg);
+            } catch (e) {
+              console.error('Parse error', e);
+            }
+          }
+        );
  
-        this.stompClient.subscribe(`/user/queue/errors`, (msg: IMessage) => {
-          this.errorSubject.next(msg.body);
-        });
- 
+        // Flush pending messages
         while (this.pendingMessages.length > 0) {
           const pending = this.pendingMessages.shift();
           if (pending) this.publishNow(pending.roomId, pending.message);
         }
       },
-      onDisconnect: () => this.connectionStatus.next(false),
+      onDisconnect: () => this.connected$.next(false),
       onStompError: (frame) => {
-        console.error('WebSocket error:', frame);
-        this.connectionStatus.next(false);
-        this.errorSubject.next(frame.headers['message'] || 'Connection error');
+        console.error('STOMP error', frame);
+        this.connected$.next(false);
       }
     });
  
-    this.stompClient.activate();
+    this.client.activate();
   }
  
   private publishNow(roomId: string, message: ChatMessage): void {
-    this.stompClient.publish({
+    this.client.publish({
       destination: `/app/chat/${roomId}/send`,
       body: JSON.stringify(message)
     });
   }
  
   sendMessage(roomId: string, message: ChatMessage): void {
-    if (this.stompClient?.connected) {
+    if (this.client?.connected) {
       this.publishNow(roomId, message);
     } else {
+      // Queue message and it sends automatically when connected
       this.pendingMessages.push({ roomId, message });
     }
   }
  
   disconnect(): void {
-    this.pendingMessages = [];
-    this.connectionStatus.next(false);
-    this.stompClient?.deactivate();
+    try {
+      this.pendingMessages = [];
+      this.stompSub?.unsubscribe();
+      this.client?.deactivate();
+      this.connected$.next(false);
+    } catch (e) {}
   }
 }

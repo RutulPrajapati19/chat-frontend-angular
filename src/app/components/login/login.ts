@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth';
-
+ 
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -15,22 +15,22 @@ export class LoginComponent {
   password = '';
   error = '';
   loading = false;
-
+ 
   constructor(private authService: AuthService, private router: Router) {}
-
-  onLogin() {
-    if (!this.username || !this.password) {
+ 
+  onLogin(): void {
+    if (!this.username.trim() || !this.password) {
       this.error = 'Please fill in all fields';
       return;
     }
     this.loading = true;
     this.error = '';
-
-    this.authService.login({ username: this.username, password: this.password })
+ 
+    this.authService.login({ username: this.username.trim(), password: this.password })
       .subscribe({
         next: () => this.router.navigate(['/rooms']),
-        error: () => {
-          this.error = 'Invalid username or password';
+        error: (err) => {
+          this.error = err?.error?.error || 'Invalid username or password';
           this.loading = false;
         }
       });

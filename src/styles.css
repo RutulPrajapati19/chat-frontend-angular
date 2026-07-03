@@ -4,11 +4,7 @@ body {
   background: #f8fafc;
   color: #0f172a;
 }
- 
-input, button, textarea {
-  font-family: inherit;
-}
- 
+input, button, textarea { font-family: inherit; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }

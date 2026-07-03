@@ -1,7 +1,8 @@
 export interface ChatMessage {
+  id?: string;
   roomId: string;
   senderUsername: string;
   content: string;
-  type: 'CHAT' | 'JOIN' | 'LEAVE';
   timestamp?: string;
+  type: 'CHAT' | 'JOIN' | 'LEAVE' | 'SYSTEM';
 }

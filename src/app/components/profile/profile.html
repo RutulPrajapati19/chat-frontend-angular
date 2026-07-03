@@ -5,14 +5,14 @@
   </div>
   <div style="max-width:480px;margin:2rem auto;padding:0 1rem;">
     @if (loading) {
-      <div style="text-align:center;color:#94a3b8;padding:3rem;font-size:14px;">Loading profile...</div>
+      <div style="text-align:center;color:#94a3b8;padding:3rem;font-size:14px;">Loading...</div>
     }
  
     @if (!loading) {
  
       <div style="background:#fff;border:0.5px solid #e2e8f0;border-radius:16px;padding:1.5rem;margin-bottom:1rem;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;">
-          <div style="width:56px;height:56px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;">
+          <div style="width:56px;height:56px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;">
             {{ username.charAt(0).toUpperCase() }}
           </div>
           <div>
@@ -22,62 +22,45 @@
         </div>
  
         @if (successMsg) {
-          <div style="background:#f0fdf4;color:#15803d;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">
-            {{ successMsg }}
-          </div>
+          <div style="background:#f0fdf4;color:#15803d;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">{{ successMsg }}</div>
         }
         @if (errorMsg) {
-          <div style="background:#fff0f0;color:#c0392b;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">
-            {{ errorMsg }}
-          </div>
+          <div style="background:#fff0f0;color:#c0392b;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">{{ errorMsg }}</div>
         }
  
         <div style="display:flex;flex-direction:column;gap:1rem;">
- 
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;">Username</label>
+            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;">Username</label>
             <input [value]="username" disabled
               style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#94a3b8;background:#f8fafc;" />
           </div>
- 
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;">Email</label>
+            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;">Email</label>
             <input [(ngModel)]="email" type="email"
               style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
               onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
           </div>
- 
         </div>
       </div>
  
       <div style="background:#fff;border:0.5px solid #e2e8f0;border-radius:16px;padding:1.5rem;margin-bottom:1rem;">
         <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:4px;">Change password</div>
-        <div style="font-size:13px;color:#94a3b8;margin-bottom:1.25rem;">Leave blank to keep your current password.</div>
- 
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:1.25rem;">Leave blank to keep current password.</div>
         <div style="display:flex;flex-direction:column;gap:1rem;">
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;">Current password</label>
-            <input [(ngModel)]="currentPassword" type="password" placeholder="Enter current password"
-              style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
-              onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
-          </div>
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;">New password</label>
-            <input [(ngModel)]="newPassword" type="password" placeholder="Min 6 characters"
-              style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
-              onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
-          </div>
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;">Confirm new password</label>
-            <input [(ngModel)]="confirmPassword" type="password" placeholder="Re-enter new password"
-              (keydown.enter)="saveChanges()"
-              style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
-              onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
-          </div>
+          <input [(ngModel)]="currentPassword" type="password" placeholder="Current password"
+            style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
+            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
+          <input [(ngModel)]="newPassword" type="password" placeholder="New password"
+            style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
+            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
+          <input [(ngModel)]="confirmPassword" type="password" placeholder="Confirm new password"
+            (keydown.enter)="save()"
+            style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;"
+            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
         </div>
       </div>
  
-      <button (click)="saveChanges()" [disabled]="saving"
+      <button (click)="save()" [disabled]="saving"
         style="width:100%;padding:0.875rem;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:0.75rem;">
         {{ saving ? 'Saving...' : 'Save changes' }}
       </button>
@@ -87,6 +70,5 @@
         Log out
       </button>
     }
- 
   </div>
 </div>

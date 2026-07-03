@@ -1,4 +1,7 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
+import {
+  Component, OnInit, OnDestroy,
+  ViewChild, ElementRef, ChangeDetectorRef, NgZone
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,9 +9,9 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { ChatService } from '../../services/chat';
 import { AuthService } from '../../services/auth';
-import { RoomService } from '../../services/room';
+import { RoomApiService, JoinRequestItem } from '../../services/room.service';
 import { ChatMessage } from '../../models/chat-message.model';
-import { JoinRequestItem } from '../../models/room.model';
+import { environment } from '../../../environments/environment';
  
 @Component({
   selector: 'app-chat-room',
@@ -16,7 +19,7 @@ import { JoinRequestItem } from '../../models/room.model';
   imports: [CommonModule, FormsModule],
   templateUrl: './chat-room.html'
 })
-export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class ChatRoomComponent implements OnInit, OnDestroy {
  
   @ViewChild('messagesEnd') messagesEnd!: ElementRef;
  
@@ -24,19 +27,19 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages: ChatMessage[] = [];
   inputText = '';
   username = '';
-  isConnected = false;
+  connected = false;
   checkingAccess = true;
   hasAccess = false;
-  accessError = '';
  
   isAdmin = false;
   showAdminPanel = false;
   pendingRequests: JoinRequestItem[] = [];
-  removeUsernameInput = '';
+  removeUsername = '';
+  adminError = '';
+  adminSuccess = '';
  
-  private sub!: Subscription;
+  private msgSub!: Subscription;
   private connSub!: Subscription;
-  private backendUrl = 'https://chat-backend-vdje.onrender.com';
  
   constructor(
     private route: ActivatedRoute,
@@ -44,65 +47,78 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     private http: HttpClient,
     private chatService: ChatService,
     private authService: AuthService,
-    private roomService: RoomService,
-    private cdr: ChangeDetectorRef
+    private roomApi: RoomApiService,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone
   ) {}
  
   ngOnInit(): void {
     this.roomId = this.route.snapshot.paramMap.get('id') || '';
     this.username = this.authService.getUsername() || '';
  
-    this.roomService.checkAccess(this.roomId).subscribe({
+    // Check access first
+    this.roomApi.checkAccess(this.roomId).subscribe({
       next: (res) => {
         this.hasAccess = res.hasAccess;
         this.checkingAccess = false;
         this.cdr.detectChanges();
  
         if (this.hasAccess) {
-          this.loadRoomData();
+          this.loadHistory();
+          this.checkIfAdmin();
         }
       },
       error: () => {
         this.hasAccess = false;
-        this.accessError = 'Could not verify access to this room.';
         this.checkingAccess = false;
         this.cdr.detectChanges();
       }
     });
- 
-    this.roomService.getAllRooms().subscribe(rooms => {
-      const room = rooms.find(r => r.id === this.roomId);
-      this.isAdmin = room?.isAdmin || false;
-      this.cdr.detectChanges();
-      if (this.isAdmin) this.loadPendingRequests();
-    });
   }
  
-  private loadRoomData(): void {
-    const headers = new HttpHeaders({ Authorization: `Bearer ${this.authService.getToken()}` });
-    this.http.get<ChatMessage[]>(`${this.backendUrl}/api/messages/${this.roomId}`, { headers })
+  private loadHistory(): void {
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.authService.getToken()}`
+    });
+    this.http.get<ChatMessage[]>(`${environment.apiUrl}/api/messages/${this.roomId}`, { headers })
       .subscribe({
-        next: msgs => { this.messages = msgs; this.cdr.detectChanges(); },
-        error: () => {}
+        next: msgs => {
+          this.messages = msgs ?? [];
+          this.cdr.detectChanges();
+          this.scrollToBottom();
+          this.startWebSocket();
+        },
+        error: () => {
+          this.messages = [];
+          this.startWebSocket();
+        }
       });
+  }
  
+  private startWebSocket(): void {
     this.chatService.connect(this.roomId);
  
     this.connSub = this.chatService.connected$.subscribe(status => {
-      this.isConnected = status;
-      this.cdr.detectChanges();
+      this.zone.run(() => {
+        this.connected = status;
+        this.cdr.detectChanges();
+      });
     });
  
-    this.sub = this.chatService.messages$.subscribe(msg => {
-      this.messages.push(msg);
-      this.cdr.detectChanges();
+    this.msgSub = this.chatService.messages$.subscribe(msg => {
+      this.zone.run(() => {
+        this.messages = [...this.messages, msg];
+        this.cdr.detectChanges();
+        this.scrollToBottom();
+      });
     });
   }
  
-  loadPendingRequests(): void {
-    this.roomService.getPendingRequests(this.roomId).subscribe({
-      next: requests => { this.pendingRequests = requests; this.cdr.detectChanges(); },
-      error: () => {}
+  private checkIfAdmin(): void {
+    this.roomApi.getAllRooms().subscribe(rooms => {
+      const room = rooms.find(r => r.id === this.roomId);
+      this.isAdmin = room?.isAdmin || false;
+      this.cdr.detectChanges();
     });
   }
  
@@ -111,43 +127,67 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (this.showAdminPanel) this.loadPendingRequests();
   }
  
-  approveRequest(requestId: string): void {
-    this.roomService.approveRequest(this.roomId, requestId).subscribe({
-      next: () => this.loadPendingRequests(),
+  loadPendingRequests(): void {
+    this.roomApi.getPendingRequests(this.roomId).subscribe({
+      next: reqs => { this.pendingRequests = reqs; this.cdr.detectChanges(); },
       error: () => {}
     });
   }
  
-  declineRequest(requestId: string): void {
-    this.roomService.declineRequest(this.roomId, requestId).subscribe({
-      next: () => this.loadPendingRequests(),
+  approveRequest(req: JoinRequestItem): void {
+    this.roomApi.approveRequest(this.roomId, req.id).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        this.adminSuccess = `${req.username} approved.`;
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+ 
+  declineRequest(req: JoinRequestItem): void {
+    this.roomApi.declineRequest(this.roomId, req.id).subscribe({
+      next: () => {
+        this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
+        this.cdr.detectChanges();
+      },
       error: () => {}
     });
   }
  
   removeMember(): void {
-    if (!this.removeUsernameInput.trim()) return;
-    this.roomService.removeMember(this.roomId, this.removeUsernameInput.trim()).subscribe({
-      next: () => { this.removeUsernameInput = ''; },
-      error: (err) => { this.accessError = err?.error?.error || 'Could not remove member'; this.cdr.detectChanges(); }
+    if (!this.removeUsername.trim()) return;
+    this.roomApi.removeMember(this.roomId, this.removeUsername.trim()).subscribe({
+      next: () => {
+        this.adminSuccess = `${this.removeUsername} removed.`;
+        this.removeUsername = '';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.adminError = err?.error?.error || 'Could not remove member.';
+        this.cdr.detectChanges();
+      }
     });
-  }
- 
-  ngAfterViewChecked(): void {
-    this.messagesEnd?.nativeElement?.scrollIntoView({ behavior: 'smooth' });
   }
  
   sendMessage(): void {
-    if (!this.inputText.trim()) return;
-    const content = this.inputText;
+    const text = this.inputText.trim();
+    if (!text) return;
     this.inputText = '';
- 
     this.chatService.sendMessage(this.roomId, {
       roomId: this.roomId,
       senderUsername: this.username,
-      content: content,
+      content: text,
       type: 'CHAT'
     });
+  }
+ 
+  private scrollToBottom(): void {
+    setTimeout(() => {
+      try {
+        this.messagesEnd?.nativeElement.scrollIntoView({ behavior: 'smooth' });
+      } catch (e) {}
+    }, 50);
   }
  
   getAvatarColor(username: string): string {
@@ -159,17 +199,19 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     return colors[Math.abs(hash) % colors.length];
   }
  
-  formatTime(timestamp: string | undefined): string {
-    if (!timestamp) return '';
-    const d = new Date(timestamp);
+  formatTime(ts: string | undefined): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
  
   goBack(): void { this.router.navigate(['/rooms']); }
  
   ngOnDestroy(): void {
-    this.sub?.unsubscribe();
+    this.msgSub?.unsubscribe();
     this.connSub?.unsubscribe();
     this.chatService.disconnect();
   }
 }
+ 
