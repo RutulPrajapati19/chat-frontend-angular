@@ -1,6 +1,8 @@
 <div style="min-height:100vh;display:flex;background:#f8fafc;">
+
   <!-- Sidebar -->
-  <div style="width:270px;background:#0f172a;display:flex;flex-direction:column;min-height:100vh;flex-shrink:0;">
+  <div style="width:300px;background:#0f172a;display:flex;flex-direction:column;min-height:100vh;flex-shrink:0;">
+
     <div style="padding:20px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
       <div style="font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
         <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
@@ -8,225 +10,185 @@
       </div>
       <div style="font-size:12px;color:#64748b;margin-top:4px;">{{ username }}</div>
     </div>
-    <div style="padding:16px 12px 8px;flex:1;overflow-y:auto;">
-      <div style="font-size:11px;font-weight:600;color:#475569;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Your rooms</div>
- 
+
+    <!-- Search -->
+    <div style="padding:12px 12px 6px;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div style="position:relative;flex:1;">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;">🔍</span>
+          <input [(ngModel)]="searchQuery"
+                 placeholder="Search rooms..."
+                 (ngModelChange)="onSearch()"
+                 style="width:100%;padding:8px 10px 8px 30px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;font-size:13px;color:#fff;outline:none;box-sizing:border-box;"
+                 onfocus="this.style.borderColor='#6366f1'"
+                 onblur="this.style.borderColor='rgba(255,255,255,0.1)'" />
+        </div>
+        @if (searchQuery) {
+          <button (click)="clearSearch()"
+            style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:#94a3b8;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px;">✕</button>
+        }
+      </div>
+    </div>
+
+    <!-- Room list -->
+    <div style="padding:6px 12px 8px;flex:1;overflow-y:auto;">
+      <div style="font-size:11px;font-weight:600;color:#475569;letter-spacing:.08em;text-transform:uppercase;padding:4px 4px 8px;">
+        Rooms ({{ filteredRooms.length }})
+      </div>
+
       @if (loadingRooms) {
-        <div style="padding:12px;font-size:13px;color:#475569;text-align:center;">Loading...</div>
+        <div style="padding:20px 12px;font-size:13px;color:#475569;text-align:center;">Loading...</div>
       }
- 
-      @for (room of rooms; track room.id) {
-        @if (canEnter(room)) {
-          <div (click)="handleRoomClick(room)"
-            style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;"
-            onmouseover="this.style.background='rgba(255,255,255,0.06)'"
-            onmouseout="this.style.background='transparent'">
-            <span style="color:#818cf8;font-size:14px;">🔒</span>
-            <span style="font-size:14px;color:#cbd5e1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ room.name }}</span>
-            @if (room.membershipStatus === 'ADMIN') {
-              <span style="font-size:10px;color:#fbbf24;">Admin</span>
-            }
-          </div>
-        }
-      }
-    </div>
- 
-    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);">
-      <div (click)="goToProfile()"
-        style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px;border-radius:8px;margin-bottom:6px;"
-        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
-        onmouseout="this.style.background='transparent'">
-        <div style="width:32px;height:32px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
-          {{ username.charAt(0).toUpperCase() }}
-        </div>
-        <span style="font-size:13px;color:#cbd5e1;flex:1;">{{ username }}</span>
-        <span style="color:#64748b;font-size:11px;">Edit</span>
-      </div>
-      <button (click)="logout()"
-        style="width:100%;background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:6px;border-radius:6px;cursor:pointer;font-size:12px;">
-        Log out
-      </button>
-    </div>
-  </div>
-  <!-- Main -->
-  <div style="flex:1;padding:2rem;overflow-y:auto;">
-    <div style="max-width:560px;margin:0 auto;">
-      <!-- Create room card -->
-      <div style="background:#fff;border:0.5px solid #e2e8f0;border-radius:16px;padding:1.5rem;margin-bottom:1.5rem;">
-        <h2 style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px;">Create a private room</h2>
-        <p style="font-size:13px;color:#64748b;margin-bottom:1.25rem;">
-          You become the admin. Set a password — users enter it to request access, you approve each one.
-        </p>
- 
-        @if (errorMsg) {
-          <div style="background:#fff0f0;color:#c0392b;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">
-            {{ errorMsg }}
-          </div>
-        }
-        @if (successMsg) {
-          <div style="background:#f0fdf4;color:#15803d;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">
-            {{ successMsg }}
-          </div>
-        }
- 
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <input [(ngModel)]="newRoomName" placeholder="Room name"
-            style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;"
-            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
-          <input [(ngModel)]="newRoomPassword" type="password" placeholder="Room password (min 4 chars)"
-            (keydown.enter)="createRoom()"
-            style="width:100%;padding:0.7rem 1rem;border:0.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;"
-            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
-          <button (click)="createRoom()" [disabled]="creating"
-            style="padding:0.75rem;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-            {{ creating ? 'Creating...' : 'Create room' }}
-          </button>
-        </div>
-      </div>
- 
-      <!-- All rooms -->
-      <div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
-        All rooms ({{ rooms.length }})
-      </div>
- 
-      @if (adminSuccess) {
-        <div style="background:#f0fdf4;color:#15803d;padding:0.65rem 1rem;border-radius:8px;margin-bottom:10px;font-size:13px;">
-          {{ adminSuccess }}
-        </div>
-      }
-      @if (adminError) {
-        <div style="background:#fff0f0;color:#c0392b;padding:0.65rem 1rem;border-radius:8px;margin-bottom:10px;font-size:13px;">
-          {{ adminError }}
-        </div>
-      }
- 
-      @for (room of rooms; track room.id) {
-        <div style="background:#fff;border:0.5px solid #f1f5f9;border-radius:12px;margin-bottom:8px;overflow:hidden;">
- 
-          <!-- Room row -->
-          <div style="display:flex;align-items:center;gap:12px;padding:14px;">
-            <div style="width:38px;height:38px;border-radius:10px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔒</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ room.name }}</div>
-              <div style="font-size:12px;color:#94a3b8;">by {{ room.createdBy }} · {{ room.memberCount }} member{{ room.memberCount === 1 ? '' : 's' }}</div>
-            </div>
- 
-            <!-- ADMIN -->
-            @if (room.membershipStatus === 'ADMIN') {
-              <button (click)="toggleAdminPanel(room.id)"
-                style="padding:5px 10px;background:rgba(251,191,36,0.15);color:#fbbf24;border:0.5px solid rgba(251,191,36,0.3);border-radius:7px;font-size:12px;cursor:pointer;margin-right:6px;white-space:nowrap;">
-                👑 Admin
-                @if (adminRoomId === room.id && pendingRequests.length > 0) {
-                  <span style="background:#fbbf24;color:#451a03;padding:1px 5px;border-radius:8px;margin-left:4px;font-size:11px;">{{ pendingRequests.length }}</span>
-                }
-              </button>
-              <button (click)="handleRoomClick(room)"
-                style="padding:5px 16px;background:#6366f1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">
-                Open →
-              </button>
-            }
- 
-            <!-- MEMBER -->
-            @if (room.membershipStatus === 'MEMBER') {
-              <span style="font-size:11px;color:#065f46;background:#d1fae5;padding:3px 8px;border-radius:6px;margin-right:6px;font-weight:600;white-space:nowrap;">✓ Member</span>
-              <button (click)="handleRoomClick(room)"
-                style="padding:5px 16px;background:#6366f1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;">
-                Open →
-              </button>
-            }
- 
-            <!-- PENDING -->
-            @if (room.membershipStatus === 'PENDING') {
-              <span (click)="handleRoomClick(room)"
-                style="font-size:11px;color:#92400e;background:#fef3c7;padding:5px 10px;border-radius:6px;font-weight:600;white-space:nowrap;cursor:pointer;">
-                ⏳ Pending
-              </span>
-            }
- 
-            <!-- NONE -->
-            @if (room.membershipStatus === 'NONE') {
-              <button (click)="handleRoomClick(room)"
-                style="padding:5px 14px;background:#fff;color:#6366f1;border:0.5px solid #6366f1;border-radius:7px;font-size:13px;cursor:pointer;white-space:nowrap;">
-                Request →
-              </button>
-            }
-          </div>
- 
-          <!-- Admin panel (inline) -->
-          @if (adminRoomId === room.id && room.membershipStatus === 'ADMIN') {
-            <div style="border-top:0.5px solid #f1f5f9;padding:12px 14px 14px;">
-              <div style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">
-                Pending join requests
-              </div>
- 
-              @if (loadingRequests) {
-                <div style="font-size:13px;color:#94a3b8;">Loading requests...</div>
-              }
- 
-              @if (!loadingRequests && pendingRequests.length === 0) {
-                <div style="font-size:13px;color:#94a3b8;">
-                  No pending requests. The page auto-refreshes every 10 seconds.
-                </div>
-              }
- 
-              @for (req of pendingRequests; track req.id) {
-                <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:0.5px solid #f1f5f9;">
-                  <div style="width:30px;height:30px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">
-                    {{ req.username.charAt(0).toUpperCase() }}
-                  </div>
-                  <span style="flex:1;font-size:13px;font-weight:500;color:#0f172a;">{{ req.username }}</span>
-                  <button (click)="approveRequest(req)"
-                    style="padding:4px 12px;background:#22c55e;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">
-                    ✓ Approve
-                  </button>
-                  <button (click)="declineRequest(req)"
-                    style="padding:4px 12px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;">
-                    ✗ Decline
-                  </button>
-                </div>
-              }
-            </div>
+
+      @for (room of filteredRooms; track room.id) {
+        <div (click)="joinRoom(room)"
+          style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:background .12s;"
+          onmouseover="this.style.background='rgba(255,255,255,0.08)'"
+          onmouseout="this.style.background='transparent'">
+          <span style="font-size:14px;color:#6366f1;font-weight:700;">#</span>
+          <span style="font-size:14px;color:#cbd5e1;flex:1;">{{ room.name }}</span>
+          @if (room.admin) {
+            <span style="font-size:10px;background:rgba(99,102,241,0.3);color:#818cf8;padding:2px 6px;border-radius:4px;flex-shrink:0;">Admin</span>
+          } @else if (room.memberStatus === 'MEMBER') {
+            <span style="font-size:10px;background:rgba(34,197,94,0.2);color:#4ade80;padding:2px 6px;border-radius:4px;flex-shrink:0;">Member</span>
+          } @else if (room.memberStatus === 'PENDING') {
+            <span style="font-size:10px;background:rgba(245,158,11,0.2);color:#fbbf24;padding:2px 6px;border-radius:4px;flex-shrink:0;">Pending</span>
+          } @else {
+            <span style="font-size:10px;background:rgba(255,255,255,0.06);color:#64748b;padding:2px 6px;border-radius:4px;flex-shrink:0;">Join</span>
           }
         </div>
       }
- 
-      @if (!loadingRooms && rooms.length === 0) {
-        <div style="text-align:center;color:#94a3b8;padding:2rem;font-size:14px;">
-          No rooms yet. Create the first one above.
+
+      @if (!loadingRooms && filteredRooms.length === 0 && searchQuery) {
+        <div style="padding:20px 12px;font-size:13px;color:#475569;text-align:center;">
+          No rooms match "{{ searchQuery }}"
+        </div>
+      }
+
+      @if (!loadingRooms && rooms.length === 0 && !searchQuery) {
+        <div style="padding:20px 12px;font-size:13px;color:#475569;text-align:center;line-height:1.6;">
+          No rooms yet.<br/>Create one →
         </div>
       }
     </div>
-  </div>
-</div>
-<!-- Join modal overlay -->
-@if (showJoinModal && joinTarget) {
-  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;">
-    <div style="background:#fff;border-radius:16px;padding:1.75rem;width:100%;max-width:380px;margin:1rem;">
-      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:4px;">🔒 Join {{ joinTarget.name }}</div>
-      <div style="font-size:13px;color:#64748b;margin-bottom:1.25rem;">
-        Enter the room password. The admin will be notified and must approve your request before you can enter.
+
+    <!-- User footer -->
+    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
+        {{ username.charAt(0).toUpperCase() }}
       </div>
- 
-      @if (joinError) {
-        <div style="background:#fff0f0;color:#c0392b;padding:0.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:13px;">
-          {{ joinError }}
+      <span style="font-size:13px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ username }}</span>
+      <button (click)="logout()"
+        style="margin-left:auto;background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0;"
+        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+        onmouseout="this.style.background='transparent'">
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Main panel -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;position:relative;">
+
+    <!-- Admin notification panel -->
+    @if (showNotificationPanel && pendingRequests.length > 0) {
+      <div style="position:fixed;top:20px;right:20px;width:360px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.12);z-index:1000;overflow:hidden;">
+        <div style="padding:14px 16px;background:#6366f1;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:14px;font-weight:700;color:#fff;">🔔 Join Requests ({{ pendingRequests.length }})</span>
+          <button (click)="showNotificationPanel=false"
+            style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+        </div>
+        @for (req of pendingRequests; track req.requestId) {
+          <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9;">
+            <div style="font-size:14px;font-weight:600;color:#0f172a;margin-bottom:4px;">{{ req.username }}</div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:10px;">wants to join <strong>#{{ req.roomName }}</strong></div>
+            <div style="display:flex;gap:8px;">
+              <button (click)="approveRequest(req)"
+                style="flex:1;padding:8px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                ✅ Approve
+              </button>
+              <button (click)="declineRequest(req)"
+                style="flex:1;padding:8px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+                ❌ Decline
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Create room card -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:20px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
+      <div style="text-align:center;margin-bottom:2rem;">
+        <div style="font-size:32px;margin-bottom:12px;">💬</div>
+        <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">Create a new room</h2>
+        <p style="font-size:14px;color:#94a3b8;">Pick a name and start chatting.<br/>Click a room in the sidebar to join.</p>
+      </div>
+
+      @if (error) {
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:1rem;">
+          {{ error }}
         </div>
       }
- 
-      <input [(ngModel)]="joinPassword" type="password" placeholder="Room password"
-        (keydown.enter)="submitJoinRequest()"
-        autofocus
-        style="width:100%;padding:0.75rem 1rem;border:0.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;margin-bottom:1rem;"
-        onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'" />
- 
-      <div style="display:flex;gap:8px;">
-        <button (click)="submitJoinRequest()" [disabled]="joining"
-          style="flex:1;padding:0.75rem;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-          {{ joining ? 'Sending...' : 'Send request' }}
+
+      @if (success) {
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:1rem;">
+          ✅ Room created! Select it from the sidebar to join.
+        </div>
+      }
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="position:relative;">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:15px;font-weight:600;">#</span>
+          <input [(ngModel)]="newRoomName"
+                 placeholder="e.g. general, random, team-chat"
+                 (keydown.enter)="createRoom()"
+                 style="width:100%;padding:0.875rem 1rem 0.875rem 2.25rem;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;color:#0f172a;outline:none;background:#f8fafc;box-sizing:border-box;"
+                 onfocus="this.style.borderColor='#6366f1';this.style.background='#fff'"
+                 onblur="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc'" />
+        </div>
+        <button (click)="createRoom()"
+          [disabled]="creating || !newRoomName.trim()"
+          [style.opacity]="creating || !newRoomName.trim() ? '0.5' : '1'"
+          style="width:100%;padding:0.875rem;background:#6366f1;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;"
+          onmouseover="this.style.background='#4f46e5'"
+          onmouseout="this.style.background='#6366f1'">
+          {{ creating ? 'Creating...' : 'Create Room' }}
         </button>
-        <button (click)="cancelJoin()"
-          style="padding:0.75rem 1.25rem;background:#fff;color:#64748b;border:0.5px solid #e2e8f0;border-radius:10px;font-size:14px;cursor:pointer;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Join Request Modal -->
+@if (showJoinModal && joinRoomTarget) {
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:2000;">
+    <div style="background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+      <h3 style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:6px;">Request to join #{{ joinRoomTarget.name }}</h3>
+      <p style="font-size:13px;color:#64748b;margin-bottom:1.5rem;">Enter the room password. The admin will approve your request.</p>
+
+      @if (joinError) {
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px;border-radius:8px;font-size:13px;margin-bottom:1rem;">{{ joinError }}</div>
+      }
+
+      <input [(ngModel)]="joinPassword"
+             type="password"
+             placeholder="Room password (if any)"
+             (keydown.enter)="submitJoinRequest()"
+             style="width:100%;padding:0.75rem 1rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;outline:none;margin-bottom:12px;box-sizing:border-box;"
+             onfocus="this.style.borderColor='#6366f1'"
+             onblur="this.style.borderColor='#e2e8f0'" />
+
+      <div style="display:flex;gap:8px;">
+        <button (click)="showJoinModal=false"
+          style="flex:1;padding:0.75rem;background:#f1f5f9;color:#64748b;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
           Cancel
+        </button>
+        <button (click)="submitJoinRequest()"
+          [disabled]="joining"
+          [style.opacity]="joining ? '0.5' : '1'"
+          style="flex:1;padding:0.75rem;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+          {{ joining ? 'Sending...' : 'Send Request' }}
         </button>
       </div>
     </div>
