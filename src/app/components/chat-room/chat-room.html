@@ -1,171 +1,120 @@
 <div style="display:flex;height:100vh;background:#f8fafc;">
-@if (checkingAccess) {
-  <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">
-    Checking access...
-  </div>
-}
-@if (!checkingAccess && !hasAccess) {
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;">
-    <div style="font-size:48px;margin-bottom:1rem;">🔒</div>
-    <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px;">Access denied</div>
-    <div style="font-size:14px;color:#64748b;margin-bottom:1.5rem;text-align:center;max-width:340px;">
-      You need to request to join this room and be approved by the admin first.
-    </div>
-    <button (click)="goBack()"
-      style="padding:0.75rem 1.5rem;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-      Back to rooms
-    </button>
-  </div>
-}
-@if (!checkingAccess && hasAccess) {
-  <!-- Sidebar -->
+
   <div style="width:260px;background:#0f172a;display:flex;flex-direction:column;flex-shrink:0;">
     <div style="padding:20px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
       <div style="font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
-        <div [style.background]="connected ? '#22c55e' : '#f59e0b'"
-             style="width:8px;height:8px;border-radius:50%;transition:background .3s;"></div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
         ChatApp
       </div>
-      <div style="font-size:11px;color:#64748b;margin-top:4px;">
-        {{ connected ? 'Connected' : 'Connecting...' }}
+    </div>
+    <div style="padding:16px 12px;flex:1;">
+      <div style="font-size:11px;font-weight:600;color:#475569;letter-spacing:.08em;text-transform:uppercase;padding:0 4px;margin-bottom:8px;">Current room</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;background:rgba(99,102,241,0.2);">
+        <span style="font-size:15px;color:#818cf8;font-weight:500;">#</span>
+        <span style="font-size:14px;color:#fff;font-weight:500;">{{ roomId }}</span>
       </div>
     </div>
-    <div style="padding:16px 12px;flex:1;overflow-y:auto;">
-      <div style="font-size:11px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Current room</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;background:rgba(99,102,241,0.2);">
-        <span style="color:#818cf8;">🔒</span>
-        <span style="font-size:14px;color:#fff;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ roomId }}</span>
+    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
+        {{ username.charAt(0).toUpperCase() }}
       </div>
- 
-      @if (isAdmin) {
-        <button (click)="toggleAdminPanel()"
-          style="width:100%;margin-top:12px;padding:8px 10px;background:rgba(251,191,36,0.12);color:#fbbf24;border:0.5px solid rgba(251,191,36,0.25);border-radius:8px;font-size:12px;cursor:pointer;text-align:left;">
-          👑 Admin panel
-          @if (pendingRequests.length > 0) {
-            <span style="background:#fbbf24;color:#451a03;padding:1px 6px;border-radius:8px;margin-left:6px;font-size:11px;font-weight:700;">{{ pendingRequests.length }}</span>
-          }
-        </button>
- 
-        @if (showAdminPanel) {
-          <div style="margin-top:10px;background:rgba(255,255,255,0.04);border-radius:10px;padding:10px;">
- 
-            @if (adminSuccess) {
-              <div style="font-size:12px;color:#22c55e;margin-bottom:8px;">{{ adminSuccess }}</div>
-            }
-            @if (adminError) {
-              <div style="font-size:12px;color:#ef4444;margin-bottom:8px;">{{ adminError }}</div>
-            }
- 
-            <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Pending requests</div>
- 
-            @if (pendingRequests.length === 0) {
-              <div style="font-size:12px;color:#64748b;">No pending requests.</div>
-            }
- 
-            @for (req of pendingRequests; track req.id) {
-              <div style="background:rgba(255,255,255,0.06);border-radius:8px;padding:8px;margin-bottom:6px;">
-                <div style="font-size:13px;color:#fff;font-weight:500;margin-bottom:6px;">{{ req.username }}</div>
-                <div style="display:flex;gap:6px;">
-                  <button (click)="approveRequest(req)"
-                    style="flex:1;padding:4px;background:#22c55e;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">
-                    ✓ Approve
-                  </button>
-                  <button (click)="declineRequest(req)"
-                    style="flex:1;padding:4px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">
-                    ✗ Decline
-                  </button>
-                </div>
+      <span style="font-size:13px;color:#cbd5e1;">{{ username }}</span>
+      <button (click)="goBack()"
+        style="margin-left:auto;background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
+        ← Back
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+
+    <div style="padding:14px 20px;background:#fff;border-bottom:0.5px solid #f1f5f9;display:flex;align-items:center;gap:12px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#0f172a;"># {{ roomId }}</div>
+        <div style="font-size:12px;color:#94a3b8;">Real-time chat</div>
+      </div>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:#f8fafc;">
+
+      @if (accessDenied) {
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;text-align:center;padding:3rem;">
+          <div style="font-size:40px;margin-bottom:1rem;">🔒</div>
+          <div style="font-size:16px;font-weight:600;color:#0f172a;margin-bottom:6px;">Access Denied</div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:1.5rem;">You are not a member of this room.</div>
+          <button (click)="goBack()"
+            style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+            ← Go Back
+          </button>
+        </div>
+      }
+
+      @if (loading && !accessDenied) {
+        <div style="display:flex;align-items:center;justify-content:center;flex:1;color:#94a3b8;">
+          <div style="text-align:center;">
+            <div style="font-size:24px;margin-bottom:8px;">⏳</div>
+            <div style="font-size:13px;">Loading messages...</div>
+          </div>
+        </div>
+      }
+
+      @if (!loading && !accessDenied && messages.length === 0) {
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:#94a3b8;text-align:center;padding:3rem;">
+          <div style="font-size:40px;margin-bottom:1rem;">💬</div>
+          <div style="font-size:16px;font-weight:600;color:#64748b;margin-bottom:6px;">No messages yet</div>
+          <div style="font-size:13px;">Be the first to say hello!</div>
+        </div>
+      }
+
+      @if (!accessDenied) {
+        @for (msg of messages; track $index) {
+          <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
+               style="display:flex;gap:10px;align-items:flex-start;">
+            <div [style.background]="getAvatarColor(msg.senderUsername)"
+                 style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;margin-top:2px;">
+              {{ msg.senderUsername.charAt(0).toUpperCase() }}
+            </div>
+            <div [style.align-items]="msg.senderUsername === username ? 'flex-end' : 'flex-start'"
+                 style="display:flex;flex-direction:column;max-width:65%;">
+              <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
+                   style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+                <span [style.color]="getAvatarColor(msg.senderUsername)"
+                      style="font-size:12px;font-weight:700;">{{ msg.senderUsername }}</span>
+                <span style="font-size:11px;color:#94a3b8;">{{ formatTime(msg.timestamp) }}</span>
               </div>
-            }
- 
-            <div style="margin-top:12px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.08);">
-              <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">Remove member</div>
-              <div style="display:flex;gap:6px;">
-                <input [(ngModel)]="removeUsername" placeholder="username"
-                  style="flex:1;padding:5px 8px;background:#0f172a;border:0.5px solid rgba(255,255,255,0.1);border-radius:6px;font-size:12px;color:#fff;outline:none;" />
-                <button (click)="removeMember()"
-                  style="padding:5px 10px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">
-                  Remove
-                </button>
+              <div [style.background]="msg.senderUsername === username ? '#6366f1' : '#ffffff'"
+                   [style.color]="msg.senderUsername === username ? '#ffffff' : '#334155'"
+                   [style.border-radius]="msg.senderUsername === username ? '16px 4px 16px 16px' : '4px 16px 16px 16px'"
+                   style="padding:10px 14px;font-size:14px;line-height:1.55;word-break:break-word;border:1px solid transparent;"
+                   [style.border-color]="msg.senderUsername === username ? 'transparent' : '#e8edf2'">
+                {{ msg.content }}
               </div>
             </div>
           </div>
         }
       }
+
+      <div #messagesEnd style="height:1px;"></div>
     </div>
- 
-    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
-      <div [style.background]="getAvatarColor(username)"
-           style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">
-        {{ username.charAt(0).toUpperCase() }}
-      </div>
-      <span style="font-size:13px;color:#cbd5e1;flex:1;">{{ username }}</span>
-      <button (click)="goBack()"
-        style="background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
-        ← Back
-      </button>
-    </div>
-  </div>
-  <!-- Chat area -->
-  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
-    <div style="padding:14px 20px;background:#fff;border-bottom:0.5px solid #f1f5f9;">
-      <div style="font-size:15px;font-weight:700;color:#0f172a;">🔒 {{ roomId }}</div>
-      <div style="font-size:12px;color:#94a3b8;">Private room · approved members only</div>
-    </div>
- 
-    <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px;background:#f8fafc;">
- 
-      @if (messages.length === 0) {
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:3rem;text-align:center;">
-          <div style="font-size:40px;margin-bottom:1rem;">💬</div>
-          <div style="font-size:16px;font-weight:600;color:#64748b;margin-bottom:4px;">No messages yet</div>
-          <div style="font-size:13px;color:#94a3b8;">Be the first to say hello.</div>
+
+    @if (!accessDenied) {
+      <div style="padding:14px 16px;background:#fff;border-top:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:10px;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:14px;padding:6px 6px 6px 16px;">
+          <input [(ngModel)]="inputText"
+                 (keydown.enter)="sendMessage()"
+                 [placeholder]="'Message #' + roomId"
+                 style="flex:1;border:none;background:transparent;font-size:14px;color:#0f172a;outline:none;padding:6px 0;" />
+          <button (click)="sendMessage()"
+            [disabled]="!inputText.trim()"
+            [style.opacity]="inputText.trim() ? '1' : '0.4'"
+            style="width:36px;height:36px;border-radius:10px;background:#6366f1;border:none;color:#fff;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            onmouseover="this.style.background='#4f46e5'"
+            onmouseout="this.style.background='#6366f1'">
+            ➤
+          </button>
         </div>
-      }
- 
-      @for (msg of messages; track $index) {
-        <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
-             style="display:flex;gap:10px;align-items:flex-start;">
-          <div [style.background]="getAvatarColor(msg.senderUsername)"
-               style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;margin-top:2px;">
-            {{ msg.senderUsername.charAt(0).toUpperCase() }}
-          </div>
-          <div [style.align-items]="msg.senderUsername === username ? 'flex-end' : 'flex-start'"
-               style="display:flex;flex-direction:column;max-width:66%;">
-            <div [style.flex-direction]="msg.senderUsername === username ? 'row-reverse' : 'row'"
-                 style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px;">
-              <span [style.color]="getAvatarColor(msg.senderUsername)"
-                    style="font-size:12px;font-weight:700;">{{ msg.senderUsername }}</span>
-              <span style="font-size:11px;color:#94a3b8;">{{ formatTime(msg.timestamp) }}</span>
-            </div>
-            <div [style.background]="msg.senderUsername === username ? '#6366f1' : '#fff'"
-                 [style.color]="msg.senderUsername === username ? '#fff' : '#334155'"
-                 [style.border-radius]="msg.senderUsername === username ? '12px 2px 12px 12px' : '2px 12px 12px 12px'"
-                 style="padding:9px 13px;font-size:14px;line-height:1.5;border:0.5px solid #e2e8f0;word-break:break-word;">
-              {{ msg.content }}
-            </div>
-          </div>
-        </div>
-      }
- 
-      <div #messagesEnd></div>
-    </div>
- 
-    <div style="padding:12px 16px;background:#fff;border-top:0.5px solid #f1f5f9;">
-      @if (!connected) {
-        <div style="font-size:12px;color:#f59e0b;margin-bottom:6px;">⏳ Connecting... your message will send once ready.</div>
-      }
-      <div style="display:flex;align-items:center;gap:10px;background:#f8fafc;border:0.5px solid #e2e8f0;border-radius:14px;padding:8px 14px;">
-        <input [(ngModel)]="inputText"
-               (keydown.enter)="sendMessage()"
-               placeholder="Type a message..."
-               style="flex:1;border:none;background:transparent;font-size:14px;color:#0f172a;outline:none;" />
-        <button (click)="sendMessage()"
-          style="width:34px;height:34px;border-radius:8px;background:#6366f1;border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">
-          ➤
-        </button>
       </div>
-    </div>
+    }
+
   </div>
-}
 </div>
