@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription, interval } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, startWith } from 'rxjs/operators';
 import { AuthService } from '../../services/auth';
 import { RoomApiService, RoomSummary, JoinRequestItem } from '../../services/room.service';
  
@@ -33,8 +33,9 @@ export class RoomListComponent implements OnInit, OnDestroy {
   adminRoomId: string | null = null;
   pendingRequests: JoinRequestItem[] = [];
   loadingRequests = false;
+  adminSuccess = '';
+  adminError = '';
  
-  private roomsSub!: Subscription;
   private pollSub!: Subscription;
  
   constructor(
@@ -46,86 +47,53 @@ export class RoomListComponent implements OnInit, OnDestroy {
  
   ngOnInit(): void {
     this.username = this.authService.getUsername() || '';
-    this.loadRooms();
  
-    // Poll every 8 seconds so admin sees new requests without refresh
-    this.pollSub = interval(8000).pipe(
+    // Poll every 10 seconds, starts immediately
+    this.pollSub = interval(10000).pipe(
+      startWith(0),
       switchMap(() => this.roomApi.getAllRooms())
     ).subscribe({
       next: rooms => {
         this.rooms = rooms;
+        this.loadingRooms = false;
         this.cdr.detectChanges();
-        // Refresh pending requests if admin panel is open
         if (this.adminRoomId) {
-          this.loadPendingRequests(this.adminRoomId);
+          this.loadPendingRequests(this.adminRoomId, false);
         }
       },
-      error: () => {}
-    });
-  }
- 
-  loadRooms(): void {
-    this.loadingRooms = true;
-    this.errorMsg = '';
-    this.cdr.detectChanges();
- 
-    this.roomApi.getAllRooms().subscribe({
-      next: rooms => {
-        this.rooms = rooms;
-        this.loadingRooms = false;
-        this.cdr.detectChanges();
-      },
       error: () => {
-        this.rooms = [];
         this.loadingRooms = false;
-        this.errorMsg = 'Could not load rooms. Server may be waking up — try again shortly.';
+        this.errorMsg = 'Could not load rooms. Server may be waking up — wait 30 seconds and refresh.';
         this.cdr.detectChanges();
       }
     });
   }
  
-  createRoom(): void {
-    if (!this.newRoomName.trim()) {
-      this.errorMsg = 'Room name is required.';
-      return;
-    }
-    if (this.newRoomPassword.length < 4) {
-      this.errorMsg = 'Room password must be at least 4 characters.';
-      return;
-    }
-    this.creating = true;
-    this.errorMsg = '';
-    this.successMsg = '';
- 
-    this.roomApi.createRoom(this.newRoomName.trim(), this.newRoomPassword).subscribe({
-      next: () => {
-        this.newRoomName = '';
-        this.newRoomPassword = '';
-        this.creating = false;
-        this.successMsg = 'Room created successfully.';
-        this.loadRooms();
-      },
-      error: (err) => {
-        this.errorMsg = err?.error?.error || 'Could not create room.';
-        this.creating = false;
-        this.cdr.detectChanges();
-      }
-    });
+  canEnter(room: RoomSummary): boolean {
+    return room.membershipStatus === 'ADMIN' || room.membershipStatus === 'MEMBER';
   }
  
   handleRoomClick(room: RoomSummary): void {
-    if (room.membershipStatus === 'ADMIN' || room.membershipStatus === 'MEMBER') {
+    this.errorMsg = '';
+    this.successMsg = '';
+ 
+    if (this.canEnter(room)) {
       this.router.navigate(['/room', room.id]);
-    } else if (room.membershipStatus === 'PENDING') {
-      this.successMsg = 'Your request is pending admin approval.';
-      this.cdr.detectChanges();
-    } else {
-      this.joinTarget = room;
-      this.joinPassword = '';
-      this.joinError = '';
-      this.showJoinModal = true;
-      this.cdr.detectChanges();
+      return;
     }
+ 
+    if (room.membershipStatus === 'PENDING') {
+      this.successMsg = 'Your request is still pending admin approval. You will receive an email when approved.';
+      this.cdr.detectChanges();
+      return;
+    }
+ 
+    // NONE — show join modal
+    this.joinTarget = room;
+    this.joinPassword = '';
+    this.joinError = '';
+    this.showJoinModal = true;
+    this.cdr.detectChanges();
   }
  
   cancelJoin(): void {
@@ -137,8 +105,9 @@ export class RoomListComponent implements OnInit, OnDestroy {
  
   submitJoinRequest(): void {
     if (!this.joinTarget || this.joining) return;
-    if (!this.joinPassword) {
+    if (!this.joinPassword.trim()) {
       this.joinError = 'Enter the room password.';
+      this.cdr.detectChanges();
       return;
     }
     this.joining = true;
@@ -148,32 +117,71 @@ export class RoomListComponent implements OnInit, OnDestroy {
       next: () => {
         this.joining = false;
         this.showJoinModal = false;
-        this.successMsg = 'Request sent. You will receive an email when the admin approves.';
-        this.loadRooms();
+        this.successMsg = 'Request sent! You will receive an email when the admin approves.';
+        // Reload rooms to update status to PENDING
+        this.roomApi.getAllRooms().subscribe(rooms => {
+          this.rooms = rooms;
+          this.cdr.detectChanges();
+        });
       },
       error: (err) => {
         this.joining = false;
-        this.joinError = err?.error?.error || 'Could not send request. Check your password.';
+        this.joinError = err?.error?.error || 'Wrong password or request already sent.';
         this.cdr.detectChanges();
       }
     });
   }
  
-  openAdminPanel(roomId: string): void {
+  createRoom(): void {
+    this.errorMsg = '';
+    this.successMsg = '';
+ 
+    if (!this.newRoomName.trim()) {
+      this.errorMsg = 'Room name is required.';
+      return;
+    }
+    if (this.newRoomPassword.length < 4) {
+      this.errorMsg = 'Room password must be at least 4 characters.';
+      return;
+    }
+ 
+    this.creating = true;
+ 
+    this.roomApi.createRoom(this.newRoomName.trim(), this.newRoomPassword).subscribe({
+      next: () => {
+        this.newRoomName = '';
+        this.newRoomPassword = '';
+        this.creating = false;
+        this.successMsg = 'Room created! You are the admin.';
+        this.roomApi.getAllRooms().subscribe(rooms => {
+          this.rooms = rooms;
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        this.errorMsg = err?.error?.error || 'Could not create room.';
+        this.creating = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+ 
+  toggleAdminPanel(roomId: string): void {
     if (this.adminRoomId === roomId) {
       this.adminRoomId = null;
       this.pendingRequests = [];
     } else {
       this.adminRoomId = roomId;
-      this.loadPendingRequests(roomId);
+      this.loadPendingRequests(roomId, true);
     }
+    this.cdr.detectChanges();
   }
  
-  loadPendingRequests(roomId: string): void {
-    this.loadingRequests = true;
+  loadPendingRequests(roomId: string, showLoading: boolean): void {
+    if (showLoading) this.loadingRequests = true;
     this.roomApi.getPendingRequests(roomId).subscribe({
-      next: requests => {
-        this.pendingRequests = requests;
+      next: reqs => {
+        this.pendingRequests = reqs;
         this.loadingRequests = false;
         this.cdr.detectChanges();
       },
@@ -185,48 +193,43 @@ export class RoomListComponent implements OnInit, OnDestroy {
   }
  
   approveRequest(req: JoinRequestItem): void {
+    this.adminError = '';
+    this.adminSuccess = '';
     this.roomApi.approveRequest(req.roomId, req.id).subscribe({
       next: () => {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
-        this.successMsg = `${req.username} approved.`;
+        this.adminSuccess = `${req.username} approved and notified by email.`;
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.errorMsg = err?.error?.error || 'Could not approve.';
+        this.adminError = err?.error?.error || 'Could not approve.';
         this.cdr.detectChanges();
       }
     });
   }
  
   declineRequest(req: JoinRequestItem): void {
+    this.adminError = '';
     this.roomApi.declineRequest(req.roomId, req.id).subscribe({
       next: () => {
         this.pendingRequests = this.pendingRequests.filter(r => r.id !== req.id);
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.errorMsg = err?.error?.error || 'Could not decline.';
+        this.adminError = err?.error?.error || 'Could not decline.';
         this.cdr.detectChanges();
       }
     });
   }
  
-  goToProfile(): void {
-    this.router.navigate(['/profile']);
-  }
+  goToProfile(): void { this.router.navigate(['/profile']); }
  
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
  
-  pendingCount(roomId: string): number {
-    if (this.adminRoomId === roomId) return this.pendingRequests.length;
-    return 0;
-  }
- 
   ngOnDestroy(): void {
-    this.roomsSub?.unsubscribe();
     this.pollSub?.unsubscribe();
   }
 }
