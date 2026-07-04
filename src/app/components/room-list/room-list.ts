@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth';
@@ -58,6 +58,7 @@ export class RoomListComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private authService: AuthService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     private notificationService: NotificationService
   ) {}
@@ -65,6 +66,23 @@ export class RoomListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.username = this.authService.getUsername() || '';
     this.loadRooms();
+
+    // Handle approval message from email link
+    this.route.queryParams.subscribe(params => {
+      const msg = params['msg'];
+      if (msg === 'approved') {
+        alert('✅ Request approved successfully!');
+        this.router.navigate(['/rooms'], { replaceUrl: true });
+      } else if (msg === 'declined') {
+        alert('✅ Request declined.');
+        this.router.navigate(['/rooms'], { replaceUrl: true });
+      } else if (msg === 'already_resolved') {
+        alert('ℹ️ This request was already resolved.');
+        this.router.navigate(['/rooms'], { replaceUrl: true });
+      }
+    });
+
+    // Connect WebSocket for real-time notifications
     this.notificationService.connect();
     this.notifSub = this.notificationService.notifications$.subscribe(n => {
       this.handleNotification(n);
@@ -82,7 +100,7 @@ export class RoomListComponent implements OnInit, OnDestroy {
       this.showNotificationPanel = true;
       this.cdr.detectChanges();
     } else if (n.type === 'REQUEST_APPROVED') {
-      alert(`✅ Your request to join #${n.roomName} was approved!`);
+      alert(`✅ Your request to join #${n.roomName} was approved! You can now enter the room.`);
       this.loadRooms();
     } else if (n.type === 'REQUEST_DECLINED') {
       alert(`❌ Your request to join #${n.roomName} was declined.`);
