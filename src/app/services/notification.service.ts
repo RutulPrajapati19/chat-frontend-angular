@@ -26,6 +26,8 @@ export class NotificationService implements OnDestroy {
   connect(): void {
     if (this.client?.active) return;
 
+    console.log('NotificationService: connecting...');
+
     this.client = new Client({
       webSocketFactory: () => new SockJS(environment.wsUrl),
       connectHeaders: {
@@ -33,19 +35,31 @@ export class NotificationService implements OnDestroy {
       },
       reconnectDelay: 3000,
       onConnect: () => {
+        console.log('NotificationService: WebSocket connected!');
         this.sub = this.client.subscribe(
           '/user/queue/notifications',
           (frame: IMessage) => {
+            console.log('NotificationService: message received:', frame.body);
             try {
               const notification: AppNotification = JSON.parse(frame.body);
+              console.log('NotificationService: parsed notification:', notification);
               this.notifications$.next(notification);
             } catch (e) {
-              console.error('Failed to parse notification', e);
+              console.error('NotificationService: parse error', e);
             }
           }
         );
+        console.log('NotificationService: subscribed to /user/queue/notifications');
       },
-      onStompError: (frame) => console.error('STOMP error', frame)
+      onStompError: (frame) => {
+        console.error('NotificationService: STOMP error', frame);
+      },
+      onDisconnect: () => {
+        console.log('NotificationService: disconnected');
+      },
+      onWebSocketError: (error) => {
+        console.error('NotificationService: WebSocket error', error);
+      }
     });
 
     this.client.activate();
