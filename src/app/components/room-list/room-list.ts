@@ -12,7 +12,7 @@ interface Room {
   id: string;
   name: string;
   createdBy: string;
-  memberStatus: string; // 'ADMIN' | 'MEMBER' | 'PENDING' | 'NONE'
+  memberStatus: string;
   admin: boolean;
   memberCount: number;
 }
@@ -35,6 +35,7 @@ export class RoomListComponent implements OnInit, OnDestroy {
   filteredRooms: Room[] = [];
   searchQuery = '';
   newRoomName = '';
+  newRoomPassword = '';
   username = '';
   creating = false;
   loadingRooms = true;
@@ -132,11 +133,12 @@ export class RoomListComponent implements OnInit, OnDestroy {
 
     this.http.post<any>(
       `${this.API}/api/rooms`,
-      { name },
+      { name, password: this.newRoomPassword.trim() },
       { headers: this.getHeaders() }
     ).subscribe({
       next: () => {
         this.newRoomName = '';
+        this.newRoomPassword = '';
         this.creating = false;
         this.success = true;
         this.loadRooms();
@@ -149,17 +151,14 @@ export class RoomListComponent implements OnInit, OnDestroy {
   }
 
   joinRoom(room: Room): void {
-    // Admin or approved member — go straight in
     if (room.admin || room.memberStatus === 'ADMIN' || room.memberStatus === 'MEMBER') {
       this.router.navigate(['/room', room.name]);
       return;
     }
-    // Already requested — show message
     if (room.memberStatus === 'PENDING') {
       alert('⏳ Your join request is pending admin approval.');
       return;
     }
-    // Not a member — show join modal
     this.joinRoomTarget = room;
     this.joinPassword = '';
     this.joinError = '';
@@ -182,7 +181,7 @@ export class RoomListComponent implements OnInit, OnDestroy {
         if (res.status === 'APPROVED') {
           this.router.navigate(['/room', this.joinRoomTarget!.name]);
         } else {
-          alert('✅ Join request sent! You will be notified when the admin approves.');
+          alert('✅ Join request sent! You will be notified when admin approves.');
           this.loadRooms();
         }
       },
