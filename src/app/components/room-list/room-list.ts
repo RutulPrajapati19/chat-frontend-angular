@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth';
@@ -27,7 +27,7 @@ interface JoinRequestItem {
 @Component({
   selector: 'app-room-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './room-list.html'
 })
 export class RoomListComponent implements OnInit, OnDestroy {
@@ -82,7 +82,6 @@ export class RoomListComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Connect WebSocket for real-time notifications
     this.notificationService.connect();
     this.notifSub = this.notificationService.notifications$.subscribe(n => {
       this.handleNotification(n);

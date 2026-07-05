@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
- 
+import { environment } from '../../../environments/environment';
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -12,70 +14,67 @@ import { AuthService } from '../../services/auth';
 })
 export class ProfileComponent implements OnInit {
   username = '';
-  email = '';
-  memberSince = '';
-  loading = true;
- 
-  currentPassword = '';
+  newUsername = '';
+  oldPassword = '';
   newPassword = '';
   confirmPassword = '';
-  saving = false;
-  successMsg = '';
-  errorMsg = '';
- 
-  constructor(private authService: AuthService, private router: Router) {}
- 
+  loading = false;
+  error = '';
+  success = '';
+  private API = environment.apiUrl;
+
+  constructor(
+    private http: HttpClient,
+    private authService: AuthService,
+    private router: Router
+  ) {}
+
   ngOnInit(): void {
-    this.authService.getMyProfile().subscribe({
-      next: (p) => {
-        this.username = p.username;
-        this.email = p.email;
-        this.memberSince = p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '';
-        this.loading = false;
-      },
-      error: () => { this.loading = false; }
-    });
+    this.username = this.authService.getUsername() || '';
+    this.newUsername = this.username;
   }
- 
-  save(): void {
-    this.successMsg = '';
-    this.errorMsg = '';
- 
-    if (this.newPassword && this.newPassword !== this.confirmPassword) {
-      this.errorMsg = 'New passwords do not match.';
-      return;
+
+  private getHeaders(): HttpHeaders {
+    return new HttpHeaders({ Authorization: `Bearer ${this.authService.getToken()}` });
+  }
+
+  changeUsername(): void {
+    if (!this.newUsername.trim() || !this.oldPassword.trim()) {
+      this.error = 'Please fill all fields'; return;
     }
-    if (this.newPassword && !this.currentPassword) {
-      this.errorMsg = 'Enter your current password.';
-      return;
-    }
- 
-    this.saving = true;
-    const payload: any = { email: this.email };
-    if (this.newPassword) {
-      payload.currentPassword = this.currentPassword;
-      payload.newPassword = this.newPassword;
-    }
- 
-    this.authService.updateProfile(payload).subscribe({
+    this.loading = true; this.error = ''; this.success = '';
+    this.http.post<any>(`${this.API}/api/auth/change-username`,
+      { newUsername: this.newUsername, password: this.oldPassword },
+      { headers: this.getHeaders() }).subscribe({
       next: () => {
-        this.successMsg = 'Profile updated successfully.';
-        this.saving = false;
-        this.currentPassword = '';
-        this.newPassword = '';
-        this.confirmPassword = '';
+        this.authService.saveSession(this.authService.getToken()!, this.newUsername);
+        this.username = this.newUsername;
+        this.loading = false;
+        this.success = 'Username updated successfully!';
       },
-      error: (err) => {
-        this.errorMsg = err?.error?.error || 'Could not update profile.';
-        this.saving = false;
-      }
+      error: (err) => { this.loading = false; this.error = err.error?.error || 'Failed'; }
     });
   }
- 
-  goBack(): void { this.router.navigate(['/rooms']); }
- 
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
+
+  changePassword(): void {
+    if (!this.oldPassword.trim() || !this.newPassword.trim()) {
+      this.error = 'Please fill all fields'; return;
+    }
+    if (this.newPassword !== this.confirmPassword) {
+      this.error = 'Passwords do not match'; return;
+    }
+    this.loading = true; this.error = ''; this.success = '';
+    this.http.post<any>(`${this.API}/api/auth/change-password`,
+      { oldPassword: this.oldPassword, newPassword: this.newPassword },
+      { headers: this.getHeaders() }).subscribe({
+      next: () => {
+        this.loading = false;
+        this.success = 'Password changed successfully!';
+        this.oldPassword = ''; this.newPassword = ''; this.confirmPassword = '';
+      },
+      error: (err) => { this.loading = false; this.error = err.error?.error || 'Failed'; }
+    });
   }
+
+  goBack(): void { this.router.navigate(['/rooms']); }
 }

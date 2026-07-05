@@ -1,6 +1,7 @@
 <div style="min-height:100vh;display:flex;background:#f8fafc;">
 
   <div style="width:300px;background:#0f172a;display:flex;flex-direction:column;min-height:100vh;flex-shrink:0;">
+
     <div style="padding:20px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.08);">
       <div style="font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;">
         <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></div>
@@ -13,7 +14,8 @@
       <div style="display:flex;gap:6px;align-items:center;">
         <div style="position:relative;flex:1;">
           <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;">🔍</span>
-          <input [(ngModel)]="searchQuery" placeholder="Search rooms..."
+          <input [(ngModel)]="searchQuery"
+                 placeholder="Search rooms..."
                  (ngModelChange)="onSearch()"
                  style="width:100%;padding:8px 10px 8px 30px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;font-size:13px;color:#fff;outline:none;box-sizing:border-box;"
                  onfocus="this.style.borderColor='#6366f1'"
@@ -62,13 +64,17 @@
       }
     </div>
 
-    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;">
+    <div style="padding:12px 16px;border-top:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:8px;">
       <div style="width:32px;height:32px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
         {{ username.charAt(0).toUpperCase() }}
       </div>
-      <span style="font-size:13px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ username }}</span>
+      <span style="font-size:13px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ username }}</span>
+      <a routerLink="/profile"
+        style="background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#94a3b8;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;text-decoration:none;">
+        👤
+      </a>
       <button (click)="logout()"
-        style="margin-left:auto;background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
+        style="background:transparent;border:0.5px solid rgba(255,255,255,0.12);color:#64748b;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">
         Logout
       </button>
     </div>
@@ -106,7 +112,7 @@
       <div style="text-align:center;margin-bottom:2rem;">
         <div style="font-size:32px;margin-bottom:12px;">💬</div>
         <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:6px;">Create a new room</h2>
-        <p style="font-size:14px;color:#94a3b8;">Set a name and password.<br/>Click a room in the sidebar to join.</p>
+        <p style="font-size:14px;color:#94a3b8;">Set a name and optional password.<br/>Click a room in the sidebar to join.</p>
       </div>
 
       @if (error) {

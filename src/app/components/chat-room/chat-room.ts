@@ -23,11 +23,21 @@ export class ChatRoomComponent implements OnInit, OnDestroy {
   @ViewChild('messagesEnd') messagesEnd!: ElementRef;
 
   roomId = '';
+  roomDbId = '';
   messages: ChatMessage[] = [];
   inputText = '';
   username = '';
   loading = true;
   accessDenied = false;
+  isAdmin = false;
+
+  // Edit room
+  showEditRoom = false;
+  editRoomName = '';
+  editRoomPassword = '';
+  editLoading = false;
+  editError = '';
+  editSuccess = '';
 
   private sub!: Subscription;
   private API = environment.apiUrl;
@@ -50,7 +60,6 @@ export class ChatRoomComponent implements OnInit, OnDestroy {
       Authorization: `Bearer ${this.authService.getToken()}`
     });
 
-    // Load message history — if 403, show access denied
     this.http.get<ChatMessage[]>(
       `${this.API}/api/messages/${this.roomId}`,
       { headers }
@@ -71,6 +80,18 @@ export class ChatRoomComponent implements OnInit, OnDestroy {
           this.connectWebSocket();
         }
         this.cdr.detectChanges();
+      }
+    });
+
+    // Check if admin
+    this.http.get<any[]>(`${this.API}/api/rooms`, { headers }).subscribe({
+      next: (rooms) => {
+        const room = rooms.find(r => r.name === this.roomId);
+        if (room) {
+          this.isAdmin = room.admin;
+          this.roomDbId = room.id;
+          this.editRoomName = room.name;
+        }
       }
     });
   }
@@ -104,6 +125,35 @@ export class ChatRoomComponent implements OnInit, OnDestroy {
       type: 'CHAT'
     });
     this.inputText = '';
+  }
+
+  saveRoomEdit(): void {
+    if (!this.roomDbId) return;
+    this.editLoading = true;
+    this.editError = '';
+    this.editSuccess = '';
+
+    const headers = new HttpHeaders({
+      Authorization: `Bearer ${this.authService.getToken()}`
+    });
+
+    this.http.put<any>(
+      `${this.API}/api/rooms/${this.roomDbId}`,
+      { name: this.editRoomName, password: this.editRoomPassword },
+      { headers }
+    ).subscribe({
+      next: () => {
+        this.editLoading = false;
+        this.editSuccess = 'Room updated!';
+        if (this.editRoomName !== this.roomId) {
+          setTimeout(() => this.router.navigate(['/room', this.editRoomName]), 1000);
+        }
+      },
+      error: (err) => {
+        this.editLoading = false;
+        this.editError = err.error?.error || 'Failed to update';
+      }
+    });
   }
 
   goBack(): void {
