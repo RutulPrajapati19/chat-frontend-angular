@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
 import { environment } from '../../../environments/environment';
- 
+
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -13,49 +13,45 @@ import { environment } from '../../../environments/environment';
   templateUrl: './profile.html'
 })
 export class ProfileComponent implements OnInit {
- 
-  // Display fields
+
   username = '';
   email = '';
   memberSince = '';
   loading = true;
- 
-  // Edit username
+
   newUsername = '';
   usernameError = '';
   usernameSuccess = '';
   savingUsername = false;
- 
-  // Edit email
+
   newEmail = '';
   emailError = '';
   emailSuccess = '';
   savingEmail = false;
- 
-  // Change password
+
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
   passwordError = '';
   passwordSuccess = '';
   savingPassword = false;
- 
+
   private API = environment.apiUrl;
- 
+
   constructor(
     private http: HttpClient,
     private authService: AuthService,
     private router: Router
   ) {}
- 
+
   ngOnInit(): void {
     this.loadProfile();
   }
- 
+
   private headers(): HttpHeaders {
     return new HttpHeaders({ Authorization: `Bearer ${this.authService.getToken()}` });
   }
- 
+
   loadProfile(): void {
     this.loading = true;
     this.http.get<any>(`${this.API}/api/users/me`, { headers: this.headers() })
@@ -66,49 +62,40 @@ export class ProfileComponent implements OnInit {
           this.email = p.email;
           this.newEmail = p.email;
           this.memberSince = p.createdAt
-            ? new Date(p.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+            ? new Date(p.createdAt).toLocaleDateString('en-IN', {
+                year: 'numeric', month: 'long', day: 'numeric'
+              })
             : '';
           this.loading = false;
         },
-        error: () => {
-          this.loading = false;
-        }
+        error: () => { this.loading = false; }
       });
   }
- 
+
   saveUsername(): void {
     this.usernameError = '';
     this.usernameSuccess = '';
- 
     if (!this.newUsername.trim()) {
-      this.usernameError = 'Username cannot be empty.';
-      return;
+      this.usernameError = 'Username cannot be empty.'; return;
     }
     if (this.newUsername.trim() === this.username) {
-      this.usernameError = 'That is already your username.';
-      return;
+      this.usernameError = 'That is already your username.'; return;
     }
     if (this.newUsername.trim().length < 3) {
-      this.usernameError = 'Username must be at least 3 characters.';
-      return;
+      this.usernameError = 'Username must be at least 3 characters.'; return;
     }
- 
     this.savingUsername = true;
- 
+
     this.http.post<any>(
-      `${this.API}/api/auth/change-username`,
+      `${this.API}/api/users/change-username`,
       { username: this.newUsername.trim() },
       { headers: this.headers() }
     ).subscribe({
       next: (res) => {
         this.savingUsername = false;
-        this.usernameSuccess = 'Username updated. Logging you in again...';
-        this.username = res.username;
-        // Save new token and username because JWT contains username
+        this.usernameSuccess = 'Username updated. Redirecting...';
         this.authService.saveSession(res.token, res.username);
-        setTimeout(() => {
-          this.router.navigate(['/rooms']);
-        }, 1500);
+        setTimeout(() => this.router.navigate(['/rooms']), 1500);
       },
       error: (err) => {
         this.savingUsername = false;
@@ -116,26 +103,21 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
- 
+
   saveEmail(): void {
     this.emailError = '';
     this.emailSuccess = '';
- 
     if (!this.newEmail.trim()) {
-      this.emailError = 'Email cannot be empty.';
-      return;
+      this.emailError = 'Email cannot be empty.'; return;
     }
     if (this.newEmail.trim() === this.email) {
-      this.emailError = 'That is already your email.';
-      return;
+      this.emailError = 'That is already your email.'; return;
     }
     if (!this.newEmail.includes('@')) {
-      this.emailError = 'Enter a valid email address.';
-      return;
+      this.emailError = 'Enter a valid email address.'; return;
     }
- 
     this.savingEmail = true;
- 
+
     this.http.put<any>(
       `${this.API}/api/users/me`,
       { email: this.newEmail.trim() },
@@ -153,40 +135,30 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
- 
+
   savePassword(): void {
     this.passwordError = '';
     this.passwordSuccess = '';
- 
     if (!this.currentPassword) {
-      this.passwordError = 'Enter your current password.';
-      return;
+      this.passwordError = 'Enter your current password.'; return;
     }
     if (!this.newPassword) {
-      this.passwordError = 'Enter a new password.';
-      return;
+      this.passwordError = 'Enter a new password.'; return;
     }
     if (this.newPassword.length < 6) {
-      this.passwordError = 'New password must be at least 6 characters.';
-      return;
+      this.passwordError = 'New password must be at least 6 characters.'; return;
     }
     if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'New passwords do not match.';
-      return;
+      this.passwordError = 'New passwords do not match.'; return;
     }
     if (this.newPassword === this.currentPassword) {
-      this.passwordError = 'New password must be different from current.';
-      return;
+      this.passwordError = 'New password must be different from current.'; return;
     }
- 
     this.savingPassword = true;
- 
+
     this.http.post<any>(
-      `${this.API}/api/auth/change-password`,
-      {
-        currentPassword: this.currentPassword,
-        newPassword: this.newPassword
-      },
+      `${this.API}/api/users/change-password`,
+      { currentPassword: this.currentPassword, newPassword: this.newPassword },
       { headers: this.headers() }
     ).subscribe({
       next: () => {
@@ -202,12 +174,11 @@ export class ProfileComponent implements OnInit {
       }
     });
   }
- 
+
   goBack(): void { this.router.navigate(['/rooms']); }
- 
+
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
 }
- 
