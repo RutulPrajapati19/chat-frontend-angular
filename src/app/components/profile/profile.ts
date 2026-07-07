@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
 import { environment } from '../../../environments/environment';
-
+ 
 @Component({
   selector: 'app-profile',
   standalone: true,
@@ -13,172 +13,162 @@ import { environment } from '../../../environments/environment';
   templateUrl: './profile.html'
 })
 export class ProfileComponent implements OnInit {
-
+ 
+  // Profile data
   username = '';
   email = '';
   memberSince = '';
   loading = true;
-
+ 
+  // Which section is being edited
+  activeSection: 'none' | 'username' | 'email' | 'password' = 'none';
+ 
+  // Username form
   newUsername = '';
-  usernameError = '';
-  usernameSuccess = '';
+  usernameMsg = '';
+  usernameError = false;
   savingUsername = false;
-
+ 
+  // Email form
   newEmail = '';
-  emailError = '';
-  emailSuccess = '';
+  emailMsg = '';
+  emailError = false;
   savingEmail = false;
-
+ 
+  // Password form
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
-  passwordError = '';
-  passwordSuccess = '';
+  passwordMsg = '';
+  passwordError = false;
   savingPassword = false;
-
+ 
   private API = environment.apiUrl;
-
+ 
   constructor(
     private http: HttpClient,
     private authService: AuthService,
     private router: Router
   ) {}
-
+ 
   ngOnInit(): void {
     this.loadProfile();
   }
-
-  private headers(): HttpHeaders {
+ 
+  private h(): HttpHeaders {
     return new HttpHeaders({ Authorization: `Bearer ${this.authService.getToken()}` });
   }
-
+ 
   loadProfile(): void {
     this.loading = true;
-    this.http.get<any>(`${this.API}/api/users/me`, { headers: this.headers() })
+    this.http.get<any>(`${this.API}/api/users/me`, { headers: this.h() }).subscribe({
+      next: (p) => {
+        this.username = p.username;
+        this.email = p.email;
+        this.newUsername = p.username;
+        this.newEmail = p.email;
+        this.memberSince = p.createdAt
+          ? new Date(p.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+          : '';
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
+    });
+  }
+ 
+  openSection(section: 'username' | 'email' | 'password'): void {
+    this.activeSection = this.activeSection === section ? 'none' : section;
+    this.clearMessages();
+  }
+ 
+  clearMessages(): void {
+    this.usernameMsg = ''; this.usernameError = false;
+    this.emailMsg = ''; this.emailError = false;
+    this.passwordMsg = ''; this.passwordError = false;
+  }
+ 
+  saveUsername(): void {
+    this.usernameMsg = ''; this.usernameError = false;
+    const val = this.newUsername.trim();
+    if (!val) { this.usernameMsg = 'Username cannot be empty.'; this.usernameError = true; return; }
+    if (val.length < 3) { this.usernameMsg = 'At least 3 characters.'; this.usernameError = true; return; }
+    if (val === this.username) { this.usernameMsg = 'Same as current username.'; this.usernameError = true; return; }
+ 
+    this.savingUsername = true;
+    this.http.post<any>(`${this.API}/api/users/change-username`, { username: val }, { headers: this.h() })
       .subscribe({
-        next: (p) => {
-          this.username = p.username;
-          this.newUsername = p.username;
-          this.email = p.email;
-          this.newEmail = p.email;
-          this.memberSince = p.createdAt
-            ? new Date(p.createdAt).toLocaleDateString('en-IN', {
-                year: 'numeric', month: 'long', day: 'numeric'
-              })
-            : '';
-          this.loading = false;
+        next: (res) => {
+          this.savingUsername = false;
+          this.username = res.username;
+          this.newUsername = res.username;
+          this.authService.saveSession(res.token, res.username);
+          this.usernameMsg = 'Username updated successfully!';
+          this.usernameError = false;
+          this.activeSection = 'none';
         },
-        error: () => { this.loading = false; }
+        error: (err) => {
+          this.savingUsername = false;
+          this.usernameMsg = err?.error?.error || 'Could not update username.';
+          this.usernameError = true;
+        }
       });
   }
-
-  saveUsername(): void {
-    this.usernameError = '';
-    this.usernameSuccess = '';
-    if (!this.newUsername.trim()) {
-      this.usernameError = 'Username cannot be empty.'; return;
-    }
-    if (this.newUsername.trim() === this.username) {
-      this.usernameError = 'That is already your username.'; return;
-    }
-    if (this.newUsername.trim().length < 3) {
-      this.usernameError = 'Username must be at least 3 characters.'; return;
-    }
-    this.savingUsername = true;
-
-    this.http.post<any>(
-      `${this.API}/api/users/change-username`,
-      { username: this.newUsername.trim() },
-      { headers: this.headers() }
-    ).subscribe({
-      next: (res) => {
-        this.savingUsername = false;
-        this.usernameSuccess = 'Username updated. Redirecting...';
-        this.authService.saveSession(res.token, res.username);
-        setTimeout(() => this.router.navigate(['/rooms']), 1500);
-      },
-      error: (err) => {
-        this.savingUsername = false;
-        this.usernameError = err?.error?.error || 'Could not update username.';
-      }
-    });
-  }
-
+ 
   saveEmail(): void {
-    this.emailError = '';
-    this.emailSuccess = '';
-    if (!this.newEmail.trim()) {
-      this.emailError = 'Email cannot be empty.'; return;
-    }
-    if (this.newEmail.trim() === this.email) {
-      this.emailError = 'That is already your email.'; return;
-    }
-    if (!this.newEmail.includes('@')) {
-      this.emailError = 'Enter a valid email address.'; return;
-    }
+    this.emailMsg = ''; this.emailError = false;
+    const val = this.newEmail.trim().toLowerCase();
+    if (!val || !val.includes('@')) { this.emailMsg = 'Enter a valid email.'; this.emailError = true; return; }
+    if (val === this.email) { this.emailMsg = 'Same as current email.'; this.emailError = true; return; }
+ 
     this.savingEmail = true;
-
-    this.http.put<any>(
-      `${this.API}/api/users/me`,
-      { email: this.newEmail.trim() },
-      { headers: this.headers() }
-    ).subscribe({
-      next: (res) => {
-        this.savingEmail = false;
-        this.email = res.email;
-        this.newEmail = res.email;
-        this.emailSuccess = 'Email updated successfully.';
-      },
-      error: (err) => {
-        this.savingEmail = false;
-        this.emailError = err?.error?.error || 'Could not update email.';
-      }
-    });
+    this.http.post<any>(`${this.API}/api/users/change-email`, { email: val }, { headers: this.h() })
+      .subscribe({
+        next: (res) => {
+          this.savingEmail = false;
+          this.email = res.email;
+          this.newEmail = res.email;
+          this.emailMsg = 'Email updated successfully!';
+          this.emailError = false;
+          this.activeSection = 'none';
+        },
+        error: (err) => {
+          this.savingEmail = false;
+          this.emailMsg = err?.error?.error || 'Could not update email.';
+          this.emailError = true;
+        }
+      });
   }
-
+ 
   savePassword(): void {
-    this.passwordError = '';
-    this.passwordSuccess = '';
-    if (!this.currentPassword) {
-      this.passwordError = 'Enter your current password.'; return;
-    }
-    if (!this.newPassword) {
-      this.passwordError = 'Enter a new password.'; return;
-    }
-    if (this.newPassword.length < 6) {
-      this.passwordError = 'New password must be at least 6 characters.'; return;
-    }
-    if (this.newPassword !== this.confirmPassword) {
-      this.passwordError = 'New passwords do not match.'; return;
-    }
-    if (this.newPassword === this.currentPassword) {
-      this.passwordError = 'New password must be different from current.'; return;
-    }
+    this.passwordMsg = ''; this.passwordError = false;
+    if (!this.currentPassword) { this.passwordMsg = 'Enter your current password.'; this.passwordError = true; return; }
+    if (this.newPassword.length < 6) { this.passwordMsg = 'Min 6 characters.'; this.passwordError = true; return; }
+    if (this.newPassword !== this.confirmPassword) { this.passwordMsg = 'Passwords do not match.'; this.passwordError = true; return; }
+    if (this.newPassword === this.currentPassword) { this.passwordMsg = 'New password must be different.'; this.passwordError = true; return; }
+ 
     this.savingPassword = true;
-
     this.http.post<any>(
       `${this.API}/api/users/change-password`,
       { currentPassword: this.currentPassword, newPassword: this.newPassword },
-      { headers: this.headers() }
+      { headers: this.h() }
     ).subscribe({
       next: () => {
         this.savingPassword = false;
-        this.passwordSuccess = 'Password changed successfully.';
+        this.passwordMsg = 'Password changed successfully!';
+        this.passwordError = false;
         this.currentPassword = '';
         this.newPassword = '';
         this.confirmPassword = '';
+        this.activeSection = 'none';
       },
       error: (err) => {
         this.savingPassword = false;
-        this.passwordError = err?.error?.error || 'Could not change password.';
+        this.passwordMsg = err?.error?.error || 'Could not change password.';
+        this.passwordError = true;
       }
     });
   }
-
+ 
   goBack(): void { this.router.navigate(['/rooms']); }
-
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
-  }
+  logout(): void { this.authService.logout(); this.router.navigate(['/login']); }
 }
